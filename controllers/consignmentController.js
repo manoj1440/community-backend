@@ -5,9 +5,6 @@ const saveStockIn = async (warehouseId, commodityId, quantity) => {
     try {
         const stockIn = await StockIn.findOne({ warehouseId, commodityId });
 
-        console.log('stockIn==', stockIn);
-        console.log('warehouseId, commodityId==', warehouseId, commodityId);
-
         if (!stockIn) {
             const newStockIn = new StockIn({ warehouseId, commodityId, quantity });
             await newStockIn.save();
