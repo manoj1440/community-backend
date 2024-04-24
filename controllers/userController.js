@@ -68,7 +68,7 @@ const addUser = async (req, res, next) => {
 
 const getUsers = async (req, res, next) => {
     try {
-        const users = await User.find({ role: { $ne: 'admin' } }, { password: 0 }).populate('warehouseId');
+        const users = await User.find({ role: { $ne: 'ADMIN' } }, { password: 0 }).populate('warehouseId');
         return res.status(200).json({
             status: true,
             data: users,
