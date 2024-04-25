@@ -57,19 +57,17 @@ const deleteStockInById = async (req, res, next) => {
     }
 };
 
-const updateQuantityByWarehouseAndCommodity = async (req, res, next) => {
+const getQuantityByWarehouseAndCommodity = async (req, res, next) => {
     try {
-        const { warehouseId, commodityId, quantity } = req.body;
+        const { warehouseId, commodityId } = req.params;
         const stockIn = await StockIn.findOne({ warehouseId, commodityId });
         if (!stockIn) {
             return res.status(404).json({ status: false, message: 'StockIn not found for the given warehouse and commodity' });
         }
-        stockIn.quantity = quantity;
-        await stockIn.save();
         res.json({ status: true, message: 'Quantity updated successfully', data: stockIn });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Failed to update quantity', error: error.message });
+        res.status(500).json({ status: false, message: 'Failed to get quantity in stock in', error: error.message });
     }
 };
 
-module.exports = { createStockIn, getAllStockIns, getStockInById, updateStockInById, deleteStockInById, updateQuantityByWarehouseAndCommodity };
+module.exports = { createStockIn, getAllStockIns, getStockInById, updateStockInById, deleteStockInById, getQuantityByWarehouseAndCommodity };

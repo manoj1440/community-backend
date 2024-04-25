@@ -5,7 +5,7 @@ const {
     getStockInById,
     updateStockInById,
     deleteStockInById,
-    updateQuantityByWarehouseAndCommodity
+    getQuantityByWarehouseAndCommodity
 } = require('../controllers/stockInController');
 
 const router = express.Router();
@@ -14,7 +14,7 @@ router.post('/', createStockIn);
 router.get('/', getAllStockIns);
 router.get('/:id', getStockInById);
 router.put('/:id', updateStockInById);
-router.put('/quantity/:id', updateQuantityByWarehouseAndCommodity);
+router.get('/quantity/:warehouseId/:commodityId', getQuantityByWarehouseAndCommodity);
 router.delete('/:id', deleteStockInById);
 
 module.exports = router;
