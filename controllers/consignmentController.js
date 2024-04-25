@@ -122,7 +122,7 @@ const deleteConsignment = async (req, res, next) => {
             return res.status(404).json({ status: false, message: 'Consignment not found' });
         }
 
-        await deleteStockIn(consignment.warehouseId, consignment.commodityId, consignment.quantity)
+        await deleteStockIn(consignment.warehouseId, consignment.commodityId, consignment.quantity);
 
         res.json({ status: true, message: 'Consignment deleted successfully' });
     } catch (error) {
