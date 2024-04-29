@@ -25,6 +25,10 @@ const stockOutSchema = new Schema({
         type: Number,
         required: true
     },
+    received: {
+        type: String,
+        default: 'No'
+    },
     amount: {
         type: Number,
         required: true

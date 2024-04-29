@@ -36,26 +36,6 @@ const deleteStockIn = async (warehouseId, commodityId, quantity) => {
     }
 }
 
-// const updateStockIn = async (warehouseId, commodityId, quantity) => {
-//     try {
-//         const stockIn = await StockIn.findOne({ warehouseId, commodityId });
-
-//         console.log('stockIn==', stockIn);
-//         console.log('warehouseId, commodityId==', warehouseId, commodityId);
-
-//         if (!stockIn) {
-//             const newStockIn = new StockIn({ warehouseId, commodityId, quantity });
-//             await newStockIn.save();
-//         } else {
-//             stockIn.quantity += quantity;
-//             await stockIn.save();
-//         }
-
-//     } catch (error) {
-//         console.log('message: ', 'Failed to update quantity', 'error:', error.message);
-//     }
-// };
-
 const createConsignment = async (req, res, next) => {
     try {
         const { farmerId, transporterId, warehouseId, commodityId, quantity, rate, amount } = req.body;
@@ -91,18 +71,11 @@ const getConsignmentById = async (req, res, next) => {
 
 const updateConsignment = async (req, res, next) => {
     try {
-        const { farmerId, transporterId, warehouseId, commodityId, quantity, rate, amount } = req.body;
-        const consignment = await Consignment.findByIdAndUpdate(req.params.id, { farmerId, transporterId, warehouseId, commodityId, quantity, rate, amount }, { new: true });
+        const { transfered } = req.body;
+        const consignment = await Consignment.findByIdAndUpdate(req.params.id, { transfered }, { new: true });
         if (!consignment) {
             return res.status(404).json({ status: false, message: 'Consignment not found' });
         }
-
-        // if (Number(consignment.quantity) > Number(quantity)) {
-        //     let newQuantity = Number(consignment.quantity) - Number(quantity)
-        // } else {
-        //     let newQuantity = Number(consignment.quantity) - Number(quantity)
-        // }
-        // await updateStockIn(warehouseId, commodityId, quantity);
         res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
     } catch (error) {
         res.status(500).json({ status: false, message: 'Failed to update consignment', error: error.message });

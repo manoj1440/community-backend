@@ -68,8 +68,8 @@ const getStockOutById = async (req, res, next) => {
 
 const updateStockOut = async (req, res, next) => {
     try {
-        const { warehouseId, commodityId, customerId, quantity, sellingPrice, amount } = req.body;
-        const stockOut = await StockOut.findByIdAndUpdate(req.params.id, { warehouseId, commodityId, customerId, quantity, sellingPrice, amount }, { new: true });
+        const { received } = req.body;
+        const stockOut = await StockOut.findByIdAndUpdate(req.params.id, { received }, { new: true });
         if (!stockOut) {
             return res.status(404).json({ status: false, message: 'StockOut not found' });
         }

@@ -27,6 +27,10 @@ const consignmentSchema = new Schema({
         type: Number,
         required: true
     },
+    transfered: {
+        type: String,
+        default: 'No'
+    },
     rate: {
         type: Number,
         required: true
