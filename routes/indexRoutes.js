@@ -9,6 +9,7 @@ const consignmentRoutes = require('./consignmentRoutes')
 const priceRoutes = require('./priceRoutes');
 const stockInRoutes = require('./stockInRoutes');
 const stockOutRoutes = require('./stockOutRoutes');
+const dashboardRoutes = require('./dashboardRoutes');
 
 module.exports = [
     {
@@ -54,5 +55,9 @@ module.exports = [
     {
         route: '/api/stock-out',
         controller: stockOutRoutes
+    },
+    {
+        route: '/api/dashboard',
+        controller: dashboardRoutes
     },
 ]

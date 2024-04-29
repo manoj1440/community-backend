@@ -31,6 +31,9 @@ const consignmentSchema = new Schema({
         type: String,
         default: 'No'
     },
+    transferedAt: {
+        type: Date
+    },
     rate: {
         type: Number,
         required: true
