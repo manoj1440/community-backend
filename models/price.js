@@ -26,7 +26,7 @@ const priceSchema = new Schema({
     },
     unit: {
         type: String,
-        enum: ['Kgs', 'Tons', 'Quitals'],
+        enum: ['Kgs', 'Tons', 'Quintals'],
         required: true
     },
     historicalPrices: [historicalPriceSchema]

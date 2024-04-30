@@ -5,7 +5,7 @@ const { v4: uuidv4 } = require('uuid');
 const consignmentSchema = new Schema({
     consignmentId: {
         type: String,
-        default: function() {
+        default: function () {
             const randomString = uuidv4().substring(0, 6);
             const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
             return `GOAL${date}${randomString.toUpperCase()}`;
@@ -34,6 +34,14 @@ const consignmentSchema = new Schema({
     },
     quantity: {
         type: Number,
+        required: true
+    },
+    unit: {
+        type: String,
+        required: true
+    },
+    existingUnit: {
+        type: String,
         required: true
     },
     transfered: {

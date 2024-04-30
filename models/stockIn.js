@@ -16,6 +16,10 @@ const stockInSchema = new Schema({
     quantity: {
         type: Number,
         required: true
+    },
+    unit: {
+        type: String,
+        required: true
     }
 }, {
     timestamps: true

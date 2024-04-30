@@ -3,6 +3,12 @@ const Price = require('../models/price');
 const createPrice = async (req, res, next) => {
     try {
         const { commodityId, warehouseId, price, unit } = req.body;
+
+        const oldPriceData = await Price.findOne({ warehouseId, commodityId });
+        if (oldPriceData) {
+            return res.status(500).json({ status: false, message: 'Price Already found' });
+        }
+
         const newPrice = new Price({ commodityId, warehouseId, unit });
         newPrice.historicalPrices.push({ price });
         await newPrice.save();
@@ -49,10 +55,10 @@ const getPriceByWarehouseCommodity = async (req, res, next) => {
 const updatePriceById = async (req, res, next) => {
     try {
         const { commodityId, warehouseId, price, unit } = req.body;
+
         const updatedPrice = await Price.findByIdAndUpdate(
             req.params.id,
-            { commodityId, warehouseId, unit, $push: { historicalPrices: { price } } },
-            { new: true }
+            { commodityId, warehouseId, unit, $push: { historicalPrices: { price } } }
         );
         if (!updatedPrice) {
             return res.status(404).json({ status: false, message: 'Price not found' });

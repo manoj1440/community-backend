@@ -64,7 +64,8 @@ const getQuantityByWarehouseAndCommodity = async (req, res, next) => {
         if (!stockIn) {
             return res.status(404).json({ status: false, message: 'StockIn not found for the given warehouse and commodity' });
         }
-        res.json({ status: true, message: 'Quantity updated successfully', data: stockIn });
+
+        res.json({ status: true, message: 'Quantity get successfully', data: stockIn });
     } catch (error) {
         res.status(500).json({ status: false, message: 'Failed to get quantity in stock in', error: error.message });
     }

@@ -1,12 +1,18 @@
 const StockOut = require('../models/stockOut');
 const StockIn = require('../models/stockIn');
 
-const updateStockIn = async (warehouseId, commodityId, quantity) => {
+const conversionFactors = {
+    Tons: 1000,
+    Kgs: 1,
+    Quintals: 100
+};
+
+const updateStockIn = async (warehouseId, commodityId, quantity, unit) => {
     try {
         const stockIn = await StockIn.findOne({ warehouseId, commodityId });
-
+        const stockQuantity = conversionFactors[unit] * quantity;
         if (stockIn) {
-            stockIn.quantity = stockIn.quantity - quantity;
+            stockIn.quantity = stockIn.quantity - stockQuantity;
 
             if (stockIn.quantity < 0) {
                 stockIn.quantity = 0;
@@ -19,12 +25,12 @@ const updateStockIn = async (warehouseId, commodityId, quantity) => {
     }
 }
 
-const deleteStockIn = async (warehouseId, commodityId, quantity) => {
+const deleteStockIn = async (warehouseId, commodityId, quantity, unit) => {
     try {
         const stockIn = await StockIn.findOne({ warehouseId, commodityId });
-
+        const stockQuantity = conversionFactors[unit] * quantity;
         if (stockIn) {
-            stockIn.quantity += quantity;
+            stockIn.quantity += stockQuantity;
             await stockIn.save();
         }
 
@@ -35,10 +41,10 @@ const deleteStockIn = async (warehouseId, commodityId, quantity) => {
 
 const createStockOut = async (req, res, next) => {
     try {
-        const { warehouseId, commodityId, customerId, quantity, sellingPrice, amount } = req.body;
-        const newStockOut = new StockOut({ warehouseId, commodityId, customerId, quantity, sellingPrice, amount });
+        const { warehouseId, commodityId, customerId, quantity, sellingPrice, amount, unit } = req.body;
+        const newStockOut = new StockOut({ warehouseId, commodityId, customerId, quantity, sellingPrice, amount, unit });
         await newStockOut.save();
-        await updateStockIn(warehouseId, commodityId, quantity)
+        await updateStockIn(warehouseId, commodityId, quantity, unit)
         res.status(201).json({ status: true, message: 'StockOut created successfully', data: newStockOut });
     } catch (error) {
         res.status(400).json({ status: false, message: 'Failed to create stockOut', error: error.message });
@@ -92,7 +98,7 @@ const deleteStockOut = async (req, res, next) => {
             return res.status(404).json({ status: false, message: 'StockOut not found' });
         }
 
-        await deleteStockIn(stockOut.warehouseId, stockOut.commodityId, stockOut.quantity);
+        await deleteStockIn(stockOut.warehouseId, stockOut.commodityId, stockOut.quantity, stockOut.unit);
 
         res.json({ status: true, message: 'StockOut deleted successfully' });
     } catch (error) {

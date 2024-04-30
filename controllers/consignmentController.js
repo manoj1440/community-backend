@@ -1,15 +1,23 @@
 const Consignment = require('../models/consignment');
 const StockIn = require('../models/stockIn');
 
-const saveStockIn = async (warehouseId, commodityId, quantity) => {
+const conversionFactors = {
+    Tons: 1000,
+    Kgs: 1,
+    Quintals: 100
+};
+
+const saveStockIn = async (warehouseId, commodityId, quantity, unit) => {
     try {
         const stockIn = await StockIn.findOne({ warehouseId, commodityId });
 
+        const stockQuantity = conversionFactors[unit] * quantity;
+
         if (!stockIn) {
-            const newStockIn = new StockIn({ warehouseId, commodityId, quantity });
+            const newStockIn = new StockIn({ warehouseId, commodityId, quantity: stockQuantity, unit: 'Kgs' });
             await newStockIn.save();
         } else {
-            stockIn.quantity += quantity;
+            stockIn.quantity += stockQuantity;
             await stockIn.save();
         }
 
@@ -18,12 +26,14 @@ const saveStockIn = async (warehouseId, commodityId, quantity) => {
     }
 }
 
-const deleteStockIn = async (warehouseId, commodityId, quantity) => {
+const deleteStockIn = async (warehouseId, commodityId, quantity, unit) => {
     try {
         const stockIn = await StockIn.findOne({ warehouseId, commodityId });
 
+        const stockQuantity = conversionFactors[unit] * quantity;
+
         if (stockIn) {
-            stockIn.quantity = stockIn.quantity - quantity;
+            stockIn.quantity = stockIn.quantity - stockQuantity;
 
             if (stockIn.quantity < 0) {
                 stockIn.quantity = 0;
@@ -38,10 +48,10 @@ const deleteStockIn = async (warehouseId, commodityId, quantity) => {
 
 const createConsignment = async (req, res, next) => {
     try {
-        const { farmerId, transporterId, warehouseId, commodityId, quantity, rate, amount } = req.body;
-        const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodityId, quantity, rate, amount });
+        const { farmerId, transporterId, warehouseId, commodityId, quantity, rate, amount, unit, existingUnit } = req.body;
+        const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodityId, quantity, rate, amount, unit, existingUnit });
         await newConsignment.save();
-        await saveStockIn(warehouseId, commodityId, quantity);
+        await saveStockIn(warehouseId, commodityId, quantity, unit);
         res.status(201).json({ status: true, message: 'Consignment created successfully', data: newConsignment });
     } catch (error) {
         res.status(400).json({ status: false, message: 'Failed to create consignment', error: error.message });
@@ -95,7 +105,7 @@ const deleteConsignment = async (req, res, next) => {
             return res.status(404).json({ status: false, message: 'Consignment not found' });
         }
 
-        await deleteStockIn(consignment.warehouseId, consignment.commodityId, consignment.quantity);
+        await deleteStockIn(consignment.warehouseId, consignment.commodityId, consignment.quantity, consignment.unit);
 
         res.json({ status: true, message: 'Consignment deleted successfully' });
     } catch (error) {

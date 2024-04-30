@@ -32,6 +32,10 @@ const stockOutSchema = new Schema({
     receivedAt: {
         type: Date
     },
+    unit: {
+        type: String,
+        required: true
+    },
     amount: {
         type: Number,
         required: true
