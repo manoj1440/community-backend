@@ -54,6 +54,7 @@ const createConsignment = async (req, res, next) => {
         await saveStockIn(warehouseId, commodityId, quantity, unit);
         res.status(201).json({ status: true, message: 'Consignment created successfully', data: newConsignment });
     } catch (error) {
+        console.log('error in createConsignment==', JSON.stringify(error))
         res.status(400).json({ status: false, message: 'Failed to create consignment', error: error.message });
     }
 };
