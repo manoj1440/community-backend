@@ -25,9 +25,9 @@ const createConsignment = async (req, res, next) => {
     try {
         const { farmerId, transporterId, warehouseId, commodity, totalAmount } = req.body;
 
-        // for (const item of commodity) {
-        //     await updateStockIn(warehouseId, item.commodityId, item.bags, item.totalQuantity, item.amount);
-        // }
+        for (const item of commodity) {
+            await updateStockIn(warehouseId, item.commodityId, item.bags, item.totalQuantity, item.amount);
+        }
         const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodity, totalAmount });
         await newConsignment.save();
         res.status(201).json({ status: true, message: 'Consignment created successfully', data: newConsignment });
