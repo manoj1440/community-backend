@@ -1,17 +1,40 @@
 const mongoose = require('mongoose');
+
 const Schema = mongoose.Schema;
-const { v4: uuidv4 } = require('uuid');
+
+const bagSchema = new Schema({
+    noOfBags: {
+        type: Number,
+        required: true
+    },
+    weight: {
+        type: Number,
+        required: true
+    },
+    quantity: {
+        type: Number,
+        required: true
+    }
+});
+
+const commoditySchema = new Schema({
+    commodityId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Commodity',
+        required: true
+    },
+    bags: [bagSchema],
+    totalQuantity: {
+        type: Number,
+        required: true
+    },
+    amount: {
+        type: Number,
+        required: true
+    }
+});
 
 const consignmentSchema = new Schema({
-    consignmentId: {
-        type: String,
-        default: function () {
-            const randomString = uuidv4().substring(0, 6);
-            const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-            return `GOAL${date}${randomString.toUpperCase()}`;
-        },
-        unique: true
-    },
     farmerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Farmer',
@@ -27,35 +50,8 @@ const consignmentSchema = new Schema({
         ref: 'Warehouse',
         required: true
     },
-    commodityId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Commodity',
-        required: true
-    },
-    quantity: {
-        type: Number,
-        required: true
-    },
-    unit: {
-        type: String,
-        required: true
-    },
-    existingUnit: {
-        type: String,
-        required: true
-    },
-    transfered: {
-        type: String,
-        default: 'No'
-    },
-    transferedAt: {
-        type: Date
-    },
-    rate: {
-        type: Number,
-        required: true
-    },
-    amount: {
+    commodity: [commoditySchema],
+    totalAmount: {
         type: Number,
         required: true
     }
