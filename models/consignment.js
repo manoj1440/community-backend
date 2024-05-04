@@ -1,5 +1,5 @@
 const mongoose = require('mongoose');
-
+const { v4: uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
 
 const bagSchema = new Schema({
@@ -35,6 +35,15 @@ const commoditySchema = new Schema({
 });
 
 const consignmentSchema = new Schema({
+    consignmentId: {
+        type: String,
+        default: function () {
+            const randomString = uuidv4().substring(0, 6);
+            const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+            return `GOAL${date}${randomString.toUpperCase()}`;
+        },
+        unique: true
+    },
     farmerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Farmer',

@@ -8,7 +8,9 @@ const updateStockIn = async (warehouseId, commodityId, bags, totalQuantity, amou
         if (!stockIn) {
             stockIn = new StockIn({ warehouseId, commodityId, bags, totalQuantity, amount });
         } else {
-            stockIn.bags = bags;
+            // Add bags to stockIn
+            stockIn.bags.push(...bags);
+            // Update totalQuantity and amount
             stockIn.totalQuantity += totalQuantity;
             stockIn.amount += amount;
         }
@@ -22,11 +24,12 @@ const updateStockIn = async (warehouseId, commodityId, bags, totalQuantity, amou
 const createConsignment = async (req, res, next) => {
     try {
         const { farmerId, transporterId, warehouseId, commodity, totalAmount } = req.body;
+
+        // for (const item of commodity) {
+        //     await updateStockIn(warehouseId, item.commodityId, item.bags, item.totalQuantity, item.amount);
+        // }
         const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodity, totalAmount });
         await newConsignment.save();
-        for (const item of commodity) {
-            await updateStockIn(warehouseId, item.commodityId, item.bags, item.totalQuantity, item.amount);
-        }
         res.status(201).json({ status: true, message: 'Consignment created successfully', data: newConsignment });
     } catch (error) {
         res.status(400).json({ status: false, message: 'Failed to create consignment', error: error.message });
@@ -80,14 +83,19 @@ const deleteConsignment = async (req, res, next) => {
             return res.status(404).json({ status: false, message: 'Consignment not found' });
         }
 
-        for (const item of consignment.commodity) {
-            await updateStockIn(consignment.warehouseId, item.commodityId, item.bags.map(bag => ({ noOfBags: -bag.noOfBags, weight: -bag.weight, quantity: -bag.quantity })), -item.totalQuantity, -item.amount);
-        }
+        // for (const item of consignment.commodity) {
+        //     await StockIn.findOneAndUpdate(
+        //         { warehouseId: consignment.warehouseId, commodityId: item.commodityId },
+        //         { $pull: { bags: { $in: item.bags } }, $inc: { totalQuantity: -item.totalQuantity, amount: -item.amount } },
+        //         { multi: true } // Apply the operation to all matching bags
+        //     );
+        // }
 
         res.json({ status: true, message: 'Consignment deleted successfully' });
     } catch (error) {
         res.status(500).json({ status: false, message: 'Failed to delete consignment', error: error.message });
     }
 };
+
 
 module.exports = { createConsignment, getAllConsignments, getConsignmentById, updateConsignment, deleteConsignment };
