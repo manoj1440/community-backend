@@ -41,16 +41,18 @@ const getPriceById = async (req, res, next) => {
 
 const getPriceByWarehouseCommodity = async (req, res, next) => {
     try {
-        const price = await Price.findOne({ warehouseId: req.params.warehouseId, commodityId: req.params.commodityId }).populate('commodityId warehouseId');
-        if (!price) {
-            return res.status(404).json({ status: false, message: 'Price not found' });
+        const { warehouseId } = req.params;
+        const prices = await Price.find({ warehouseId }).populate('commodityId');
+
+        if (prices.length === 0) {
+            return res.status(404).json({ status: false, message: 'Prices not found for the given warehouseId' });
         }
-        res.json({ status: true, message: 'Price fetched successfully', data: price });
+
+        res.json({ status: true, message: 'Prices fetched successfully', data: prices });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Failed to fetch getPriceByWarehouseCommodity', error: error.message });
+        res.status(500).json({ status: false, message: 'Failed to fetch prices by warehouseId', error: error.message });
     }
 };
-
 
 const updatePriceById = async (req, res, next) => {
     try {
