@@ -65,8 +65,8 @@ const getConsignmentById = async (req, res, next) => {
 
 const updateConsignment = async (req, res, next) => {
     try {
-        const { farmerId, transporterId, warehouseId, commodity, totalAmount } = req.body;
-        const consignment = await Consignment.findByIdAndUpdate(req.params.id, { farmerId, transporterId, warehouseId, commodity, totalAmount }, { new: true });
+        const { transferred } = req.body;
+        const consignment = await Consignment.findByIdAndUpdate(req.params.id, { transferred, transferredAt: new Date().toISOString() }, { new: true });
         if (!consignment) {
             return res.status(404).json({ status: false, message: 'Consignment not found' });
         }

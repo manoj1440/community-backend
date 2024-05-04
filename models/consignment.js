@@ -59,6 +59,13 @@ const consignmentSchema = new Schema({
         ref: 'Warehouse',
         required: true
     },
+    transferred: {
+        type: String,
+        default: 'No'
+    },
+    transferredAt: {
+        type: Date
+    },
     commodity: [commoditySchema],
     totalAmount: {
         type: Number,
