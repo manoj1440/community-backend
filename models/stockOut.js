@@ -27,6 +27,10 @@ const commoditySchema = new Schema({
         type: Number,
         required: true
     },
+    rate: {
+        type: Number,
+        required: true
+    },
     amount: {
         type: Number,
         required: true
