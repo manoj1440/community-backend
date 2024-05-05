@@ -6,7 +6,7 @@ const Customer = require('../models/customer')
 const getStockInTotalQuantity = async () => {
     try {
         const totalQuantity = await StockIn.aggregate([
-            { $group: { _id: null, totalQuantity: { $sum: "$quantity" } } }
+            { $group: { _id: null, totalQuantity: { $sum: "$totalQuantity" } } }
         ]);
         return totalQuantity.length > 0 ? totalQuantity[0].totalQuantity : 0;
     } catch (error) {
@@ -31,7 +31,7 @@ const getStockInCommodityStats = async (req, res) => {
         {
           $group: {
             _id: '$commodity.name',
-            totalQuantity: { $sum: '$quantity' },
+            totalQuantity: { $sum: '$totalQuantity' },
           },
         },
       ]);
@@ -100,7 +100,7 @@ const getStockInWarehouseWiseStats = async () => {
               warehouseName: '$warehouse.name',
               commodityName: '$commodity.name',
             },
-            totalQuantity: { $sum: '$quantity' },
+            totalQuantity: { $sum: '$totalQuantity' },
           },
         },
       ]);

@@ -1,29 +1,47 @@
 const mongoose = require('mongoose');
-
 const Schema = mongoose.Schema;
 
-const stockOutSchema = new Schema({
-    warehouseId: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Warehouse',
+const bagSchema = new Schema({
+    noOfBags: {
+        type: Number,
         required: true
     },
+    weight: {
+        type: Number,
+        required: true
+    },
+    quantity: {
+        type: Number,
+        required: true
+    }
+});
+
+const commoditySchema = new Schema({
     commodityId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Commodity',
         required: true
     },
+    bags: [bagSchema],
+    totalQuantity: {
+        type: Number,
+        required: true
+    },
+    amount: {
+        type: Number,
+        required: true
+    }
+});
+
+const StockOutSchema = new Schema({
+    warehouseId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Warehouse',
+        required: true
+    },
     customerId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Customer'
-    },
-    quantity: {
-        type: Number,
-        required: true
-    },
-    sellingPrice: {
-        type: Number,
-        required: true
     },
     received: {
         type: String,
@@ -32,11 +50,8 @@ const stockOutSchema = new Schema({
     receivedAt: {
         type: Date
     },
-    unit: {
-        type: String,
-        required: true
-    },
-    amount: {
+    commodity: [commoditySchema],
+    totalAmount: {
         type: Number,
         required: true
     }
@@ -44,4 +59,5 @@ const stockOutSchema = new Schema({
     timestamps: true
 });
 
-module.exports = mongoose.model('StockOut', stockOutSchema);
+module.exports = mongoose.model('StockOut', StockOutSchema);
+

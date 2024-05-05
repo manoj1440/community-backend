@@ -1,74 +1,58 @@
 const StockOut = require('../models/stockOut');
+
 const StockIn = require('../models/stockIn');
 
-const conversionFactors = {
-    Tons: 1000,
-    Kgs: 1,
-    Quintals: 100
+const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
+    try {
+        let stockIn = await StockIn.findOne({ warehouseId, commodityId });
+
+        if (!stockIn) {
+            stockIn = new StockIn({ warehouseId, commodityId, totalQuantity });
+        } else {
+            stockIn.totalQuantity += totalQuantity;
+        }
+
+        await stockIn.save();
+    } catch (error) {
+        throw new Error('Failed to update stock-in: ' + error.message);
+    }
 };
 
-const updateStockIn = async (warehouseId, commodityId, quantity, unit) => {
-    try {
-        const stockIn = await StockIn.findOne({ warehouseId, commodityId });
-        const stockQuantity = conversionFactors[unit] * quantity;
-        if (stockIn) {
-            stockIn.quantity = stockIn.quantity - stockQuantity;
-
-            if (stockIn.quantity < 0) {
-                stockIn.quantity = 0;
-            }
-            await stockIn.save();
-        }
-
-    } catch (error) {
-        console.log('message: ', 'Failed to update quantity', 'error:', error.message);
-    }
-}
-
-const deleteStockIn = async (warehouseId, commodityId, quantity, unit) => {
-    try {
-        const stockIn = await StockIn.findOne({ warehouseId, commodityId });
-        const stockQuantity = conversionFactors[unit] * quantity;
-        if (stockIn) {
-            stockIn.quantity += stockQuantity;
-            await stockIn.save();
-        }
-
-    } catch (error) {
-        console.log('message: ', 'Failed to update quantity', 'error:', error.message);
-    }
-}
 
 const createStockOut = async (req, res, next) => {
     try {
-        const { warehouseId, commodityId, customerId, quantity, sellingPrice, amount, unit } = req.body;
-        const newStockOut = new StockOut({ warehouseId, commodityId, customerId, quantity, sellingPrice, amount, unit });
+        const { warehouseId, customerId, commodity, totalAmount } = req.body;
+
+        for (const item of commodity) {
+            await updateStockIn(warehouseId, item.commodityId, -item.totalQuantity);
+        }
+
+        const newStockOut = new StockOut({ warehouseId, customerId, commodity, totalAmount });
         await newStockOut.save();
-        await updateStockIn(warehouseId, commodityId, quantity, unit)
-        res.status(201).json({ status: true, message: 'StockOut created successfully', data: newStockOut });
+        res.status(201).json({ status: true, message: 'Stock Out created successfully', data: newStockOut });
     } catch (error) {
-        res.status(400).json({ status: false, message: 'Failed to create stockOut', error: error.message });
+        res.status(400).json({ status: false, message: 'Failed to create Stock Out', error: error.message });
     }
 };
 
 const getAllStockOuts = async (req, res, next) => {
     try {
-        const stockOuts = await StockOut.find().populate('commodityId customerId warehouseId');
-        res.json({ status: true, message: 'StockOuts fetched successfully', data: stockOuts });
+        const stockOuts = await StockOut.find().populate('warehouseId').populate('customerId').populate('commodity.commodityId');
+        res.json({ status: true, message: 'Stock Outs fetched successfully', data: stockOuts });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Failed to fetch stockOuts', error: error.message });
+        res.status(500).json({ status: false, message: 'Failed to fetch Stock Outs', error: error.message });
     }
 };
 
 const getStockOutById = async (req, res, next) => {
     try {
-        const stockOut = await StockOut.findById(req.params.id);
+        const stockOut = await StockOut.findById(req.params.id).populate('warehouseId').populate('customerId').populate('commodity.commodityId');
         if (!stockOut) {
-            return res.status(404).json({ status: false, message: 'StockOut not found' });
+            return res.status(404).json({ status: false, message: 'Stock Out not found' });
         }
-        res.json({ status: true, message: 'StockOut fetched successfully', data: stockOut });
+        res.json({ status: true, message: 'Stock Out fetched successfully', data: stockOut });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Failed to fetch stockOut', error: error.message });
+        res.status(500).json({ status: false, message: 'Failed to fetch Stock Out', error: error.message });
     }
 };
 
@@ -77,9 +61,9 @@ const updateStockOut = async (req, res, next) => {
         const { received } = req.body;
         const stockOut = await StockOut.findByIdAndUpdate(req.params.id, { received, receivedAt: new Date().toISOString() }, { new: true });
         if (!stockOut) {
-            return res.status(404).json({ status: false, message: 'StockOut not found' });
+            return res.status(404).json({ status: false, message: 'stockOut not found' });
         }
-        res.json({ status: true, message: 'StockOut updated successfully', data: stockOut });
+        res.json({ status: true, message: 'stockOut updated successfully', data: stockOut });
     } catch (error) {
         res.status(500).json({ status: false, message: 'Failed to update stockOut', error: error.message });
     }
@@ -87,22 +71,18 @@ const updateStockOut = async (req, res, next) => {
 
 const deleteStockOut = async (req, res, next) => {
     try {
-
-        const stockOut = await StockOut.findById(req.params.id);
+        const stockOut = await StockOut.findByIdAndDelete(req.params.id);
         if (!stockOut) {
-            return res.status(404).json({ status: false, message: 'stockOut not found' });
+            return res.status(404).json({ status: false, message: 'Stock Out not found' });
         }
 
-        const deletedStockOut = await StockOut.findByIdAndDelete(req.params.id);
-        if (!deletedStockOut) {
-            return res.status(404).json({ status: false, message: 'StockOut not found' });
+        for (const item of stockOut.commodity) {
+            await updateStockIn(stockOut.warehouseId, item.commodityId, item.totalQuantity);
         }
 
-        await deleteStockIn(stockOut.warehouseId, stockOut.commodityId, stockOut.quantity, stockOut.unit);
-
-        res.json({ status: true, message: 'StockOut deleted successfully' });
+        res.json({ status: true, message: 'Stock Out deleted successfully' });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Failed to delete stockOut', error: error.message });
+        res.status(500).json({ status: false, message: 'Failed to delete Stock Out', error: error.message });
     }
 };
 

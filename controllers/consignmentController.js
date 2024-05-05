@@ -1,18 +1,14 @@
 const Consignment = require('../models/consignment');
 const StockIn = require('../models/stockIn');
 
-const updateStockIn = async (warehouseId, commodityId, bags, totalQuantity, amount) => {
+const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
     try {
         let stockIn = await StockIn.findOne({ warehouseId, commodityId });
 
         if (!stockIn) {
-            stockIn = new StockIn({ warehouseId, commodityId, bags, totalQuantity, amount });
+            stockIn = new StockIn({ warehouseId, commodityId, totalQuantity });
         } else {
-            // Add bags to stockIn
-            stockIn.bags.push(...bags);
-            // Update totalQuantity and amount
             stockIn.totalQuantity += totalQuantity;
-            stockIn.amount += amount;
         }
 
         await stockIn.save();
@@ -26,7 +22,7 @@ const createConsignment = async (req, res, next) => {
         const { farmerId, transporterId, warehouseId, commodity, totalAmount } = req.body;
 
         for (const item of commodity) {
-            await updateStockIn(warehouseId, item.commodityId, item.bags, item.totalQuantity, item.amount);
+            await updateStockIn(warehouseId, item.commodityId, item.totalQuantity);
         }
         const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodity, totalAmount });
         await newConsignment.save();
@@ -83,13 +79,9 @@ const deleteConsignment = async (req, res, next) => {
             return res.status(404).json({ status: false, message: 'Consignment not found' });
         }
 
-        // for (const item of consignment.commodity) {
-        //     await StockIn.findOneAndUpdate(
-        //         { warehouseId: consignment.warehouseId, commodityId: item.commodityId },
-        //         { $pull: { bags: { $in: item.bags } }, $inc: { totalQuantity: -item.totalQuantity, amount: -item.amount } },
-        //         { multi: true } // Apply the operation to all matching bags
-        //     );
-        // }
+        for (const item of consignment.commodity) {
+            await updateStockIn(consignment.warehouseId, item.commodityId, -item.totalQuantity);
+        }
 
         res.json({ status: true, message: 'Consignment deleted successfully' });
     } catch (error) {

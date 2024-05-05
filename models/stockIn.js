@@ -2,21 +2,6 @@ const mongoose = require('mongoose');
 
 const Schema = mongoose.Schema;
 
-const bagSchema = new Schema({
-    noOfBags: {
-        type: Number,
-        required: true
-    },
-    weight: {
-        type: Number,
-        required: true
-    },
-    quantity: {
-        type: Number,
-        required: true
-    }
-});
-
 const stockInSchema = new Schema({
     warehouseId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -28,12 +13,7 @@ const stockInSchema = new Schema({
         ref: 'Commodity',
         required: true
     },
-    bags: [bagSchema],
     totalQuantity: {
-        type: Number,
-        required: true
-    },
-    amount: {
         type: Number,
         required: true
     }
