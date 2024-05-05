@@ -63,7 +63,7 @@ const getStockOutById = async (req, res, next) => {
 const updateStockOut = async (req, res, next) => {
     try {
         const { received } = req.body;
-        const stockOut = await StockOut.findByIdAndUpdate(req.params.id, { received, receivedAt: new Date().toISOString() }, { new: true });
+        const stockOut = await StockOut.findByIdAndUpdate(req.params.id, { received, receivedAt: received.toLowerCase() === 'yes' ? new Date().toISOString() : null }, { new: true });
         if (!stockOut) {
             return res.status(404).json({ status: false, message: 'stockOut not found' });
         }
