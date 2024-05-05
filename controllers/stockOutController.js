@@ -10,6 +10,10 @@ const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
             stockIn = new StockIn({ warehouseId, commodityId, totalQuantity });
         } else {
             stockIn.totalQuantity += totalQuantity;
+
+            if (stockIn.totalQuantity <= 0) {
+                stockIn.totalQuantity = 0;
+            }
         }
 
         await stockIn.save();
