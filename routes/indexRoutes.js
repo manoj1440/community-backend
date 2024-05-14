@@ -10,6 +10,7 @@ const priceRoutes = require('./priceRoutes');
 const stockInRoutes = require('./stockInRoutes');
 const stockOutRoutes = require('./stockOutRoutes');
 const dashboardRoutes = require('./dashboardRoutes');
+const depotCashRoutes = require('./depotCashRoutes');
 
 module.exports = [
     {
@@ -60,4 +61,8 @@ module.exports = [
         route: '/api/dashboard',
         controller: dashboardRoutes
     },
+    {
+        route: '/api/depot-cash',
+        controller: depotCashRoutes
+    }
 ]
