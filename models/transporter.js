@@ -11,7 +11,7 @@ const transporterSchema = new Schema({
         type: String,
         required: true
     },
-    transportAgency: {
+    driverContactNo : {
         type: String
     }
 }, {

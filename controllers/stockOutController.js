@@ -1,5 +1,6 @@
 const StockOut = require('../models/stockOut');
 const StockIn = require('../models/stockIn');
+const DepotCash = require('../models/depotCash');
 
 const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
     try {
@@ -87,6 +88,31 @@ const getStockOutById = async (req, res) => {
 // Update a StockOut by ID
 const updateStockOut = async (req, res) => {
     try {
+        const { received } = req.body;
+        const stockOut = await StockOut.findByIdAndUpdate(req.params.id, { received, receivedAt: received.toLowerCase() === 'yes' ? new Date().toISOString() : null }, { new: true });
+
+        console.log(stockOut);
+        if (!stockOut) {
+            return res.status(404).json({ status: false, message: 'stockOut not found' });
+
+        }
+
+        if (received == 'Yes') {
+            
+            const warehouseId = stockOut.warehouseId;
+
+            const depotCash = await DepotCash.findOne({ warehouseId: warehouseId });
+
+            console.log(depotCash);
+
+            depotCash.transactions.push({
+                date: new Date(),
+                amount: stockOut.receivedAmount,
+                type: 'Credit'
+            });
+            await depotCash.save();
+        } 
+
         const updatedStockOut = await StockOut.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('warehouseId customerId commodityId');
         if (!updatedStockOut) {
             return res.status(404).json({
