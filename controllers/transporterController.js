@@ -2,8 +2,8 @@ const Transporter = require('../models/transporter');
 
 const createTransporter = async (req, res, next) => {
     try {
-        const { driverName, vehicleNumber, transportAgency } = req.body;
-        const transporter = new Transporter({ driverName, vehicleNumber, transportAgency });
+        const { driverName, vehicleNumber, driverContactNo } = req.body;
+        const transporter = new Transporter({ driverName, vehicleNumber, driverContactNo });
         await transporter.save();
         res.status(201).json({ status: true, message: 'Transporter created successfully', data: transporter });
     } catch (error) {
@@ -34,8 +34,8 @@ const getTransporterById = async (req, res, next) => {
 
 const updateTransporterById = async (req, res, next) => {
     try {
-        const { driverName, vehicleNumber, transportAgency } = req.body;
-        const updatedTransporter = await Transporter.findByIdAndUpdate(req.params.id, { driverName, vehicleNumber, transportAgency }, { new: true });
+        const { driverName, vehicleNumber, driverContactNo } = req.body;
+        const updatedTransporter = await Transporter.findByIdAndUpdate(req.params.id, { driverName, vehicleNumber, driverContactNo }, { new: true });
         if (!updatedTransporter) {
             return res.status(404).json({ status: false, message: 'Transporter not found' });
         }
