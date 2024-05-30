@@ -39,18 +39,29 @@ const createConsignment = async (req, res, next) => {
 
 const getAllConsignments = async (req, res, next) => {
     try {
-        const consignments = await Consignment.find()
-            .populate('farmerId')
-            .populate('transporterId')
-            .populate('warehouseId')
-            .populate('commodity.commodityId');
-
+        const warehouseId = req.userData.user.warehouseId._id;
+        const role = req.userData.user.role;
+        let consignments;
+        if (role === 'ADMIN') {
+            consignments = await Consignment.find()
+                .populate('farmerId')
+                .populate('transporterId')
+                .populate('warehouseId')
+                .populate('commodity.commodityId');
+        } else {
+            consignments = await Consignment.find({ warehouseId: warehouseId })
+                .populate('farmerId')
+                .populate('transporterId')
+                .populate('warehouseId')
+                .populate('commodity.commodityId');
+        }
         res.json({ status: true, message: 'Consignments fetched successfully', data: consignments });
     } catch (error) {
         console.log('error===', error);
         res.status(500).json({ status: false, message: 'Failed to fetch consignments', error: error.message });
     }
 };
+
 
 const getConsignmentById = async (req, res, next) => {
     try {
@@ -67,7 +78,7 @@ const getConsignmentById = async (req, res, next) => {
 const updateConsignment = async (req, res, next) => {
     try {
         const { transferred } = req.body;
-        
+
         const consignment = await Consignment.findById(req.params.id);
 
         if (!consignment) {
