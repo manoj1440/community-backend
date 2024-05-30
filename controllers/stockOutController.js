@@ -46,12 +46,24 @@ const createStockOut = async (req, res) => {
 // Get all StockOuts
 const getAllStockOuts = async (req, res) => {
     try {
-        const stockOuts = await StockOut.find().populate('warehouseId customerId commodityId');
-        res.json({
-            status: true,
-            message: 'StockOuts fetched successfully',
-            data: stockOuts,
-        });
+        const warehouseId = req.userData.user.warehouseId._id;
+        const role = req.userData.user.role;
+        console.log(warehouseId, role);
+        if (role === 'ADMIN') {
+            const stockOuts = await StockOut.find().populate('warehouseId customerId commodityId');
+            res.json({
+                status: true,
+                message: 'StockOuts fetched successfully',
+                data: stockOuts,
+            });
+        } else {
+            const stockOuts = await StockOut.find({ warehouseId: warehouseId }).populate('warehouseId customerId commodityId');
+            res.json({
+                status: true,
+                message: 'StockOuts fetched successfully',
+                data: stockOuts,
+            });
+        }
     } catch (error) {
         res.status(500).json({
             status: false,
@@ -98,7 +110,7 @@ const updateStockOut = async (req, res) => {
         }
 
         if (received == 'Yes') {
-            
+
             const warehouseId = stockOut.warehouseId;
 
             const depotCash = await DepotCash.findOne({ warehouseId: warehouseId });
@@ -111,7 +123,7 @@ const updateStockOut = async (req, res) => {
                 type: 'Credit'
             });
             await depotCash.save();
-        } 
+        }
 
         const updatedStockOut = await StockOut.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('warehouseId customerId commodityId');
         if (!updatedStockOut) {
