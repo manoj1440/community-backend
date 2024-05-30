@@ -15,6 +15,15 @@ const getStockInTotalQuantity = async () => {
   }
 };
 
+const getStockInDetails = async () => {
+  try {
+    const stockInDetails = await StockIn.find();
+    return stockInDetails;
+  } catch (error) {
+    throw new Error('Failed to get quantity details of stock-in: ' + error.message);
+  }
+}
+
 const getStockInCommodityStats = async (req, res) => {
   try {
     const stats = await StockIn.aggregate([
@@ -132,6 +141,7 @@ const getDashboardStats = async (req, res, next) => {
     const totalTransportersCount = await getTotalTransportersCount();
     const stockInWarehouseWiseStats = await getStockInWarehouseWiseStats();
     const consignmentData = await getConsignmentDetailsAndCount();
+    const stockInData = await getStockInDetails();
     res.json({
       status: true, message: 'Dashboard data fetched successfully', data: {
         totalStockInQuantity,
@@ -140,7 +150,8 @@ const getDashboardStats = async (req, res, next) => {
         totalCustomersCount,
         totalTransportersCount,
         stockInWarehouseWiseStats,
-        consignmentData
+        consignmentData,
+        stockInData
       }
     });
   } catch (error) {
