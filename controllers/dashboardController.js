@@ -3,6 +3,7 @@ const Farmer = require('../models/farmer');
 const Transporter = require('../models/transporter');
 const Customer = require('../models/customer');
 const Consignment = require('../models/consignment');
+const StockOut = require('../models/stockOut');
 
 const getStockInTotalQuantity = async () => {
   try {
@@ -124,13 +125,21 @@ const getStockInWarehouseWiseStats = async () => {
 const getConsignmentDetailsAndCount = async (req, res, next) => {
   try {
     const consignmentDetails = await Consignment.find();
-    // console.log(consignmentDetails)
+  
     return consignmentDetails
   } catch (error) {
     throw new Error('Failed to get consignment stats of consignment: ' + error.message);
   }
 }
 
+const getStockOutDetails = async(req, res) => {
+    try {
+      const stockOutDetails = await  StockOut.find();
+      return stockOutDetails;
+    } catch (error) {
+    throw new Error('Failed to get stock-out stats : ' + error.message);
+    }
+}
 
 const getDashboardStats = async (req, res, next) => {
   try {
@@ -142,6 +151,7 @@ const getDashboardStats = async (req, res, next) => {
     const stockInWarehouseWiseStats = await getStockInWarehouseWiseStats();
     const consignmentData = await getConsignmentDetailsAndCount();
     const stockInData = await getStockInDetails();
+    const stockOutData = await getStockOutDetails();
     res.json({
       status: true, message: 'Dashboard data fetched successfully', data: {
         totalStockInQuantity,
@@ -151,7 +161,8 @@ const getDashboardStats = async (req, res, next) => {
         totalTransportersCount,
         stockInWarehouseWiseStats,
         consignmentData,
-        stockInData
+        stockInData,
+        stockOutData
       }
     });
   } catch (error) {
