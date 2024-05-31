@@ -50,14 +50,14 @@ const getAllStockOuts = async (req, res) => {
         const role = req.userData.user.role;
         console.log(warehouseId, role);
         if (role === 'ADMIN') {
-            const stockOuts = await StockOut.find().populate('warehouseId customerId commodityId');
+            const stockOuts = await StockOut.find().populate('warehouseId customerId commodityId').sort({ createdAt: -1 });
             res.json({
                 status: true,
                 message: 'StockOuts fetched successfully',
                 data: stockOuts,
             });
         } else {
-            const stockOuts = await StockOut.find({ warehouseId: warehouseId }).populate('warehouseId customerId commodityId');
+            const stockOuts = await StockOut.find({ warehouseId: warehouseId }).populate('warehouseId customerId commodityId').sort({ createdAt: -1 });
             res.json({
                 status: true,
                 message: 'StockOuts fetched successfully',
