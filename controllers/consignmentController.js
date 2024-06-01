@@ -39,18 +39,31 @@ const createConsignment = async (req, res, next) => {
 
 const getAllConsignments = async (req, res, next) => {
     try {
-        const consignments = await Consignment.find()
-            .populate('farmerId')
-            .populate('transporterId')
-            .populate('warehouseId')
-            .populate('commodity.commodityId');
-
+        const warehouseId = req.userData.user.warehouseId._id;
+        const role = req.userData.user.role;
+        let consignments;
+        if (role === 'ADMIN') {
+            consignments = await Consignment.find()
+                .populate('farmerId')
+                .populate('transporterId')
+                .populate('warehouseId')
+                .populate('commodity.commodityId')
+                .sort({ createdAt: -1 });
+        } else {
+            consignments = await Consignment.find({ warehouseId: warehouseId })
+                .populate('farmerId')
+                .populate('transporterId')
+                .populate('warehouseId')
+                .populate('commodity.commodityId')
+                .sort({ createdAt: -1 });
+        }
         res.json({ status: true, message: 'Consignments fetched successfully', data: consignments });
     } catch (error) {
         console.log('error===', error);
         res.status(500).json({ status: false, message: 'Failed to fetch consignments', error: error.message });
     }
 };
+
 
 const getConsignmentById = async (req, res, next) => {
     try {
@@ -67,7 +80,7 @@ const getConsignmentById = async (req, res, next) => {
 const updateConsignment = async (req, res, next) => {
     try {
         const { transferred } = req.body;
-        
+
         const consignment = await Consignment.findById(req.params.id);
 
         if (!consignment) {
@@ -88,7 +101,6 @@ const updateConsignment = async (req, res, next) => {
                 );
 
                 depotCash.closingAmount -= consignment.totalAmount;
-                depotCash.save();
 
                 depotCash.transactions.push({
                     date: new Date(),
@@ -96,6 +108,7 @@ const updateConsignment = async (req, res, next) => {
                     type: 'Debit'
                 });
                 await depotCash.save();
+                return res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
             } else {
                 return res.status(200).json({ status: false, message: 'Insufficient cash balance in the depot' });
             }
@@ -105,11 +118,10 @@ const updateConsignment = async (req, res, next) => {
                 { transferred, transferredAt: transferred.toLowerCase() === 'yes' ? new Date().toISOString() : null },
                 { new: true }
             );
+            return res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
         }
-
-        res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
     } catch (error) {
-        res.status(500).json({ status: false, message: 'Failed to update consignment', error: error.message });
+        return res.status(500).json({ status: false, message: 'Failed to update consignment', error: error.message });
     }
 };
 
