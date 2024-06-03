@@ -4,6 +4,7 @@ const Transporter = require('../models/transporter');
 const Customer = require('../models/customer');
 const Consignment = require('../models/consignment');
 const StockOut = require('../models/stockOut');
+const DepotCash = require('../models/depotCash');
 
 const getStockInTotalQuantity = async () => {
   try {
@@ -125,20 +126,29 @@ const getStockInWarehouseWiseStats = async () => {
 const getConsignmentDetailsAndCount = async (req, res, next) => {
   try {
     const consignmentDetails = await Consignment.find();
-  
+
     return consignmentDetails
   } catch (error) {
     throw new Error('Failed to get consignment stats of consignment: ' + error.message);
   }
 }
 
-const getStockOutDetails = async(req, res) => {
-    try {
-      const stockOutDetails = await  StockOut.find();
-      return stockOutDetails;
-    } catch (error) {
+const getStockOutDetails = async (req, res) => {
+  try {
+    const stockOutDetails = await StockOut.find();
+    return stockOutDetails;
+  } catch (error) {
     throw new Error('Failed to get stock-out stats : ' + error.message);
-    }
+  }
+}
+
+const getDepotCashDetails = async (req, res) => {
+  try {
+    const depotCashDetails = await DepotCash.find();
+    return depotCashDetails
+  } catch (error) {
+    throw new Error('Failed to get depotcash stats : ' + error.message);
+  }
 }
 
 const getDashboardStats = async (req, res, next) => {
@@ -152,6 +162,7 @@ const getDashboardStats = async (req, res, next) => {
     const consignmentData = await getConsignmentDetailsAndCount();
     const stockInData = await getStockInDetails();
     const stockOutData = await getStockOutDetails();
+    const depotCashData = await getDepotCashDetails();
     res.json({
       status: true, message: 'Dashboard data fetched successfully', data: {
         totalStockInQuantity,
@@ -162,7 +173,8 @@ const getDashboardStats = async (req, res, next) => {
         stockInWarehouseWiseStats,
         consignmentData,
         stockInData,
-        stockOutData
+        stockOutData,
+        depotCashData
       }
     });
   } catch (error) {
