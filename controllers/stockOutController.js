@@ -97,47 +97,67 @@ const getStockOutById = async (req, res) => {
     }
 };
 
-// Update a StockOut by ID
 const updateStockOut = async (req, res) => {
     try {
-        const { received } = req.body;
-        const stockOut = await StockOut.findByIdAndUpdate(req.params.id, { received, receivedAt: received.toLowerCase() === 'yes' ? new Date().toISOString() : null }, { new: true });
+        const { received, totalQuantity, rate, amount, totalReceivedQuantity, receivedAmount } = req.body;
 
-        console.log(stockOut);
-        if (!stockOut) {
-            return res.status(404).json({ status: false, message: 'stockOut not found' });
+        let receivedAt;
 
+        console.log('LOG', received, totalQuantity, rate, amount, totalReceivedQuantity, receivedAmount);
+
+        // Check if 'received' field is present in the request body
+        if (received !== undefined) {
+            receivedAt = received.toLowerCase() === 'yes' ? new Date().toISOString() : null;
         }
 
-        if (received == 'Yes') {
+        const updateData = received !== undefined ? { received, receivedAt } : {
+            totalQuantity,
+            rate,
+            amount,
+            totalReceivedQuantity,
+            receivedAmount
+        };
 
-            const warehouseId = stockOut.warehouseId;
+        console.log('LOG updateData', updateData);
 
-            const depotCash = await DepotCash.findOne({ warehouseId: warehouseId });
+        // Update the StockOut document
+        const updatedStockOut = await StockOut.findByIdAndUpdate(req.params.id, updateData, { new: true });
 
-            console.log(depotCash);
-
-            depotCash.transactions.push({
-                date: new Date(),
-                amount: stockOut.receivedAmount,
-                type: 'Credit'
-            });
-            await depotCash.save();
-        }
-
-        const updatedStockOut = await StockOut.findByIdAndUpdate(req.params.id, req.body, { new: true }).populate('warehouseId customerId commodityId');
+        // Handle case where StockOut document is not found
         if (!updatedStockOut) {
             return res.status(404).json({
                 status: false,
                 message: 'StockOut not found',
             });
         }
+
+        console.log('LOG updatedStockOut', updatedStockOut);
+
+        // Perform additional actions if 'received' is 'Yes'
+        if (received === 'Yes') {
+            const warehouseId = updatedStockOut.warehouseId;
+            const depotCash = await DepotCash.findOne({ warehouseId });
+
+            if (depotCash) {
+                depotCash.transactions.push({
+                    date: new Date(),
+                    amount: updatedStockOut.receivedAmount,
+                    type: 'Credit'
+                });
+                await depotCash.save();
+            } else {
+                console.log('DepotCash not found for warehouseId:', warehouseId);
+            }
+        }
+
+        // Send response with updated StockOut data
         res.json({
             status: true,
             message: 'StockOut updated successfully',
             data: updatedStockOut,
         });
     } catch (error) {
+        console.error('Error updating StockOut:', error);
         res.status(400).json({
             status: false,
             message: 'Failed to update StockOut',
@@ -145,6 +165,7 @@ const updateStockOut = async (req, res) => {
         });
     }
 };
+
 
 // Delete a StockOut by ID
 const deleteStockOut = async (req, res) => {
