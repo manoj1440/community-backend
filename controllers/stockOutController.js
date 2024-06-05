@@ -48,7 +48,6 @@ const getAllStockOuts = async (req, res) => {
     try {
         const warehouseId = req.userData.user.warehouseId._id;
         const role = req.userData.user.role;
-        console.log(warehouseId, role);
         if (role === 'ADMIN') {
             const stockOuts = await StockOut.find().populate('warehouseId customerId commodityId').sort({ createdAt: -1 });
             res.json({
@@ -103,8 +102,6 @@ const updateStockOut = async (req, res) => {
 
         let receivedAt;
 
-        console.log('LOG', received, totalQuantity, rate, amount, totalReceivedQuantity, receivedAmount);
-
         // Check if 'received' field is present in the request body
         if (received !== undefined) {
             receivedAt = received.toLowerCase() === 'yes' ? new Date().toISOString() : null;
@@ -118,8 +115,6 @@ const updateStockOut = async (req, res) => {
             receivedAmount
         };
 
-        console.log('LOG updateData', updateData);
-
         // Update the StockOut document
         const updatedStockOut = await StockOut.findByIdAndUpdate(req.params.id, updateData, { new: true });
 
@@ -130,8 +125,6 @@ const updateStockOut = async (req, res) => {
                 message: 'StockOut not found',
             });
         }
-
-        console.log('LOG updatedStockOut', updatedStockOut);
 
         // Perform additional actions if 'received' is 'Yes'
         if (received === 'Yes') {
