@@ -5,7 +5,7 @@ const StockIn = require('../models/stockIn');
 const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
     try {
         let stockIn = await StockIn.findOne({ warehouseId, commodityId });
-        
+
         if (!stockIn) {
             stockIn = new StockIn({ warehouseId, commodityId, totalQuantity });
         } else {
@@ -24,7 +24,7 @@ const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
 const createConsignment = async (req, res, next) => {
     try {
         const { farmerId, transporterId, warehouseId, commodity, totalAmount } = req.body;
-        const  userId  = req.userData.user._id;
+        const userId = req.userData.user._id;
 
         for (const item of commodity) {
             await updateStockIn(warehouseId, item.commodityId, item.totalQuantity);
@@ -103,11 +103,21 @@ const updateConsignment = async (req, res, next) => {
                 depotCash.closingAmount -= consignment.totalAmount;
 
                 depotCash.transactions.push({
+                    entityId: consignment.farmerId,
+                    entityType: 'Farmer',
                     date: new Date(),
                     amount: consignment.totalAmount,
                     type: 'Debit'
                 });
-                await depotCash.save();
+
+                try {
+
+                    await depotCash.save();
+                } catch (error) {
+                    console.log('LOG', error)
+                }
+
+
                 return res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
             } else {
                 return res.status(200).json({ status: false, message: 'Insufficient cash balance in the depot' });

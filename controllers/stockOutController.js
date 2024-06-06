@@ -25,9 +25,10 @@ const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
 // Create a new StockOut
 const createStockOut = async (req, res) => {
     try {
+        const userId = req.userData.user._id;
         await updateStockIn(req.body.warehouseId, req.body.commodityId, -req.body.totalQuantity);
 
-        const newStockOut = await StockOut.create(req.body);
+        const newStockOut = await StockOut.create({ ...req.body, createdBy: userId });
 
         res.status(201).json({
             status: true,
@@ -102,7 +103,6 @@ const updateStockOut = async (req, res) => {
 
         let receivedAt;
 
-        // Check if 'received' field is present in the request body
         if (received !== undefined) {
             receivedAt = received.toLowerCase() === 'yes' ? new Date().toISOString() : null;
         }
@@ -115,10 +115,10 @@ const updateStockOut = async (req, res) => {
             receivedAmount
         };
 
-        // Update the StockOut document
         const updatedStockOut = await StockOut.findByIdAndUpdate(req.params.id, updateData, { new: true });
 
-        // Handle case where StockOut document is not found
+        console.log('LOG',updatedStockOut);
+
         if (!updatedStockOut) {
             return res.status(404).json({
                 status: false,
@@ -126,24 +126,28 @@ const updateStockOut = async (req, res) => {
             });
         }
 
-        // Perform additional actions if 'received' is 'Yes'
         if (received === 'Yes') {
             const warehouseId = updatedStockOut.warehouseId;
             const depotCash = await DepotCash.findOne({ warehouseId });
 
+
             if (depotCash) {
                 depotCash.transactions.push({
+                    entityId : updatedStockOut.customerId,
+                    entityType: 'Customer',
                     date: new Date(),
                     amount: updatedStockOut.receivedAmount,
                     type: 'Credit'
                 });
+
+                console.log('LOG1',depotCash)
                 await depotCash.save();
+                  console.log('LOG2',depotCash)
             } else {
                 console.log('DepotCash not found for warehouseId:', warehouseId);
             }
         }
 
-        // Send response with updated StockOut data
         res.json({
             status: true,
             message: 'StockOut updated successfully',
