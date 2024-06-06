@@ -15,7 +15,6 @@ const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
                 stockIn.totalQuantity = 0;
             }
         }
-
         await stockIn.save();
     } catch (error) {
         throw new Error('Failed to update stock-in: ' + error.message);
@@ -25,11 +24,12 @@ const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
 const createConsignment = async (req, res, next) => {
     try {
         const { farmerId, transporterId, warehouseId, commodity, totalAmount } = req.body;
+        const userId = req.userData.user._id;
 
         for (const item of commodity) {
             await updateStockIn(warehouseId, item.commodityId, item.totalQuantity);
         }
-        const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodity, totalAmount });
+        const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodity, totalAmount, createdBy: userId });
         await newConsignment.save();
         res.status(201).json({ status: true, message: 'Consignment created successfully', data: newConsignment });
     } catch (error) {
@@ -103,11 +103,21 @@ const updateConsignment = async (req, res, next) => {
                 depotCash.closingAmount -= consignment.totalAmount;
 
                 depotCash.transactions.push({
+                    entityId: consignment.farmerId,
+                    entityType: 'Farmer',
                     date: new Date(),
                     amount: consignment.totalAmount,
                     type: 'Debit'
                 });
-                await depotCash.save();
+
+                try {
+
+                    await depotCash.save();
+                } catch (error) {
+                    console.log('LOG', error)
+                }
+
+
                 return res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
             } else {
                 return res.status(200).json({ status: false, message: 'Insufficient cash balance in the depot' });
