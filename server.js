@@ -84,9 +84,15 @@ mongoose
         useUnifiedTopology: true,
     })
     .then(() => {
+        const isLocal = MONGODB_URI.includes('localhost') || MONGODB_URI.includes('127.0.0.1');
+        const dbEnvironment = isLocal ? 'LOCAL' : 'PRODUCTION';
+
+        console.log(`CONNECTED TO ${dbEnvironment} MONGODB INSTANCE.`);
+
         if (process.env.NODE_ENV === 'development') {
-            // mongoose.set('debug', true);
+        //    mongoose.set('debug', true);
         }
+
         app.listen(PORT, () => {
             console.log('SERVER RUNNING ON PORT', PORT);
         });

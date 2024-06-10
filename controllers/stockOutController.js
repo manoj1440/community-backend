@@ -1,6 +1,6 @@
 const StockOut = require('../models/stockOut');
 const StockIn = require('../models/stockIn');
-const DepotCash = require('../models/depotCash');
+const { DepotCash, Transaction } = require('../models/depotCash');
 
 const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
     try {
@@ -117,8 +117,6 @@ const updateStockOut = async (req, res) => {
 
         const updatedStockOut = await StockOut.findByIdAndUpdate(req.params.id, updateData, { new: true });
 
-        console.log('LOG',updatedStockOut);
-
         if (!updatedStockOut) {
             return res.status(404).json({
                 status: false,
@@ -126,28 +124,66 @@ const updateStockOut = async (req, res) => {
             });
         }
 
-        if (received === 'Yes') {
-            const warehouseId = updatedStockOut.warehouseId;
-            const depotCash = await DepotCash.findOne({ warehouseId });
+        if (received) {
+            if (received.toLowerCase() === 'yes') {
+                const warehouseId = updatedStockOut.warehouseId;
+                const depotCash = await DepotCash.findOne({ warehouseId });
 
+                if (depotCash) {
+                    depotCash.closingAmount += updatedStockOut.receivedAmount;
 
-            if (depotCash) {
-                depotCash.transactions.push({
-                    entityId : updatedStockOut.customerId,
-                    entityType: 'Customer',
-                    date: new Date(),
-                    amount: updatedStockOut.receivedAmount,
-                    type: 'Credit'
-                });
+                    const newTransaction = new Transaction({
+                        entityId: updatedStockOut.customerId,
+                        entityType: 'Customer',
+                        warehouseId: updatedStockOut.warehouseId,
+                        consignmentId: updatedStockOut._id,
+                        date: new Date(),
+                        amount: updatedStockOut.receivedAmount,
+                        type: 'Credit',
+                        reverted: false
+                    });
 
-                console.log('LOG1',depotCash)
-                await depotCash.save();
-                  console.log('LOG2',depotCash)
-            } else {
-                console.log('DepotCash not found for warehouseId:', warehouseId);
+                    await newTransaction.save();
+                    depotCash.transactions.push(newTransaction._id);
+                    await depotCash.save();
+                } else {
+                    console.log('DepotCash not found for warehouseId:', warehouseId);
+                }
+            } else if (received.toLowerCase() === 'no') {
+
+                const transaction = await Transaction.findOne({ consignmentId: req.params.id, reverted: false });
+
+                if (transaction) {
+                    const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId });
+                    if (depotCash) {
+                        depotCash.closingAmount -= transaction.amount;
+                        transaction.reverted = true;
+
+                        const reversedTransaction = new Transaction({
+                            entityId: transaction.entityId,
+                            entityType: transaction.entityType,
+                            warehouseId: transaction.warehouseId,
+                            consignmentId: req.params.id,
+                            date: new Date(),
+                            amount: transaction.amount,
+                            type: transaction.type === 'Credit' ? 'Debit' : 'Credit',
+                            reverted: true,
+                            originalTransactionId: transaction._id
+                        });
+                        depotCash.transactions.push(reversedTransaction._id);
+
+                        await Promise.all([transaction.save(), reversedTransaction.save(), depotCash.save()]);
+                    }
+                }
+                const updatedConsignment = await StockOut.findByIdAndUpdate(
+                    req.params.id,
+                    { transferred: 'No', transferredAt: null },
+                    { new: true }
+                );
+                return res.json({ status: true, message: 'StockOut updated successfully', data: updatedConsignment });
             }
-        }
 
+        }
         res.json({
             status: true,
             message: 'StockOut updated successfully',

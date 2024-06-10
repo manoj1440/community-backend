@@ -1,5 +1,5 @@
 const Consignment = require('../models/consignment');
-const DepotCash = require('../models/depotCash');
+const { DepotCash, Transaction } = require('../models/depotCash');
 const StockIn = require('../models/stockIn');
 
 const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
@@ -48,6 +48,7 @@ const getAllConsignments = async (req, res, next) => {
                 .populate('transporterId')
                 .populate('warehouseId')
                 .populate('commodity.commodityId')
+                .populate('createdBy')
                 .sort({ createdAt: -1 });
         } else {
             consignments = await Consignment.find({ warehouseId: warehouseId })
@@ -55,6 +56,7 @@ const getAllConsignments = async (req, res, next) => {
                 .populate('transporterId')
                 .populate('warehouseId')
                 .populate('commodity.commodityId')
+                .populate('createdBy')
                 .sort({ createdAt: -1 });
         }
         res.json({ status: true, message: 'Consignments fetched successfully', data: consignments });
@@ -79,7 +81,9 @@ const getConsignmentById = async (req, res, next) => {
 
 const updateConsignment = async (req, res, next) => {
     try {
-        const { transferred } = req.body;
+        let { transferred } = req.body;
+
+        transferred = transferred.toLowerCase();
 
         const consignment = await Consignment.findById(req.params.id);
 
@@ -87,48 +91,77 @@ const updateConsignment = async (req, res, next) => {
             return res.status(404).json({ status: false, message: 'Consignment not found' });
         }
 
-        if (transferred === 'Yes') {
+        if (transferred === 'yes') {
             const warehouseId = consignment.warehouseId;
 
-            const depotCash = await DepotCash.findOne({ warehouseId: warehouseId });
+            const depotCash = await DepotCash.findOne({ warehouseId });
+
+            if (!depotCash) {
+                return res.status(404).json({ status: false, message: 'Depot cash entry not found' });
+            }
 
             if (depotCash.closingAmount >= consignment.totalAmount) {
-
                 const updatedConsignment = await Consignment.findByIdAndUpdate(
                     req.params.id,
-                    { transferred, transferredAt: transferred.toLowerCase() === 'yes' ? new Date().toISOString() : null },
+                    { transferred: 'yes', transferredAt: new Date().toISOString() },
                     { new: true }
                 );
 
                 depotCash.closingAmount -= consignment.totalAmount;
 
-                depotCash.transactions.push({
+                const newTransaction = new Transaction({
                     entityId: consignment.farmerId,
                     entityType: 'Farmer',
+                    warehouseId: consignment.warehouseId,
+                    consignmentId: consignment._id,
                     date: new Date(),
                     amount: consignment.totalAmount,
                     type: 'Debit'
                 });
 
-                try {
-
-                    await depotCash.save();
-                } catch (error) {
-                    console.log('LOG', error)
-                }
+                await newTransaction.save();
 
 
-                return res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
+                depotCash.transactions.push(newTransaction._id);
+                await depotCash.save();
+
+                return res.json({ status: true, message: 'Consignment updated successfully', data: updatedConsignment });
             } else {
                 return res.status(200).json({ status: false, message: 'Insufficient cash balance in the depot' });
             }
         } else {
+            const transaction = await Transaction.findOne({ consignmentId: req.params.id, reverted: false });
+            
+            if (transaction) {
+                const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId });
+                if (depotCash) {
+                    depotCash.closingAmount += transaction.amount;
+                    transaction.reverted = true;
+
+                    const reversedTransaction = new Transaction({
+                        entityId: transaction.entityId,
+                        entityType: transaction.entityType,
+                        warehouseId: transaction.warehouseId,
+                        consignmentId: req.params.id,
+                        date: new Date(),
+                        amount: transaction.amount,
+                        type: transaction.type === 'Credit' ? 'Debit' : 'Credit',
+                        reverted: true,
+                        originalTransactionId: transaction._id
+                    });
+                    depotCash.transactions.push(reversedTransaction._id);
+
+                    await Promise.all([transaction.save(), reversedTransaction.save(), depotCash.save()]);
+                }
+            }
+
             const updatedConsignment = await Consignment.findByIdAndUpdate(
                 req.params.id,
-                { transferred, transferredAt: transferred.toLowerCase() === 'yes' ? new Date().toISOString() : null },
+                { transferred: 'No', transferredAt: null },
                 { new: true }
             );
-            return res.json({ status: true, message: 'Consignment updated successfully', data: consignment });
+
+            return res.json({ status: true, message: 'Consignment updated successfully', data: updatedConsignment });
         }
     } catch (error) {
         return res.status(500).json({ status: false, message: 'Failed to update consignment', error: error.message });

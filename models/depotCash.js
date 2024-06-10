@@ -9,6 +9,12 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         enum: ['User', 'Farmer', 'Customer']
     },
+    consignmentId: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
+        warehouseId: {
+        type: mongoose.Schema.Types.ObjectId,
+    },
     date: {
         type: Date,
         default: Date.now
@@ -21,9 +27,18 @@ const transactionSchema = new mongoose.Schema({
         type: String,
         enum: ['Credit', 'Debit'],
         required: true
+    },
+    reverted: {
+        type: Boolean,
+        default: false
+    },
+    originalTransactionId: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Transaction'
     }
 });
 
+// DepotCash Schema
 const depotCashSchema = new mongoose.Schema({
     warehouseId: {
         type: mongoose.Schema.Types.ObjectId,
@@ -38,30 +53,17 @@ const depotCashSchema = new mongoose.Schema({
         type: Number,
         required: true
     },
-    transactions: [transactionSchema],
+    transactions: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Transaction'
+    }],
     date: {
         type: Date,
         default: Date.now
     }
 });
 
+const DepotCash = mongoose.model('DepotCash', depotCashSchema);
+const Transaction = mongoose.model('Transaction', transactionSchema);
 
-depotCashSchema.virtual('transactions.entity', {
-    ref: function(model) {
-        switch (model.entityType) {
-            case 'User':
-                return 'User';
-            case 'Farmer':
-                return 'Farmer';
-            case 'Customer':
-                return 'Customer';
-            default:
-                return 'User';
-        }
-    },
-    localField: 'transactions.entityId',
-    foreignField: '_id',
-    justOne: true,
-});
-
-module.exports = mongoose.model('DepotCash', depotCashSchema);
+module.exports = { DepotCash, Transaction };

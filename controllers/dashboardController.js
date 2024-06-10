@@ -4,7 +4,7 @@ const Transporter = require('../models/transporter');
 const Customer = require('../models/customer');
 const Consignment = require('../models/consignment');
 const StockOut = require('../models/stockOut');
-const DepotCash = require('../models/depotCash');
+const {DepotCash} = require('../models/depotCash');
 
 const getStockInTotalQuantity = async () => {
   try {
@@ -144,10 +144,11 @@ const getStockOutDetails = async (req, res) => {
 
 const getDepotCashDetails = async (req, res) => {
   try {
-    const depotCashDetails = await DepotCash.find();
+    const depotCashDetails = await DepotCash.find().populate('transactions');
     return depotCashDetails
   } catch (error) {
     throw new Error('Failed to get depotcash stats : ' + error.message);
+    
   }
 }
 

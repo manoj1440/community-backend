@@ -4,7 +4,8 @@ const {
     getDepotCashById,
     updateDepotCashById,
     deleteDepotCashById,
-    getAllDepotCashEntries
+    getAllDepotCashEntries,
+    revertTransaction
 } = require('../controllers/depotCashController');
 
 const router = express.Router();
@@ -12,7 +13,8 @@ const router = express.Router();
 router.post('/', addDepotCash);
 router.get('/', getAllDepotCashEntries);
 router.get('/:id', getDepotCashById);
-router.put('/:id', updateDepotCashById);
 router.delete('/:id', deleteDepotCashById);
+router.put('/:transactionId', updateDepotCashById);
+router.post('/revert/:transactionId', revertTransaction);
 
 module.exports = router;
