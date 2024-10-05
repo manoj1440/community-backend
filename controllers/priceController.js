@@ -83,4 +83,33 @@ const deletePriceById = async (req, res, next) => {
     }
 };
 
-module.exports = { createPrice, getAllPrices, getPriceById, getPriceByWarehouseCommodity, updatePriceById, deletePriceById };
+const getPriceByWarehouseIdAndCommodityId = async (req, res, next) => {
+    const { warehouseId, commodityId } = req.params;
+    try {
+        const priceData = await Price.findOne({ warehouseId, commodityId });
+
+        if (!priceData || priceData.historicalPrices.length === 0) {
+            return res.status(404).json({ status: false, message: 'Price data not found' });
+        }
+
+        const latestPrice = priceData.historicalPrices.sort((a, b) => b.date - a.date)[0];
+
+        res.status(200).json({
+            status: true,
+            message: "Latest price fetched successfully !!",
+            data: {
+                commodityId: priceData.commodityId,
+                warehouseId: priceData.warehouseId,
+                unit: priceData.unit,
+                latestPrice: latestPrice.price,
+                date: latestPrice.date
+            }
+        });
+    } catch (error) {
+        console.error('Error fetching price data:', error);
+        res.status(500).json({ message: 'Server error' });
+    }
+};
+
+
+module.exports = { createPrice, getAllPrices, getPriceById, getPriceByWarehouseCommodity, updatePriceById, deletePriceById, getPriceByWarehouseIdAndCommodityId };

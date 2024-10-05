@@ -2,7 +2,7 @@ const jwt = require('jsonwebtoken');
 
 const authentication = (req, res, next) => {
 
-    const excludedRoutes = ['/api/login','/api/logout'];
+    const excludedRoutes = ['/api/login','/api/logout', '/api/merge/add-consignment'];
 
     if (excludedRoutes.includes(req.path)) {
         return next();
@@ -17,7 +17,7 @@ const authentication = (req, res, next) => {
 
     try {
         const decodedToken = jwt.verify(token, process.env.JWT_SECRET);
-        req.userData = decodedToken; // Attach the decoded payload to the request object
+        req.userData = decodedToken; 
         next();
     } catch (error) {
         res.clearCookie('token');
