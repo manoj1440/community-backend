@@ -37,6 +37,129 @@ const createConsignment = async (req, res, next) => {
     }
 };
 
+const createConsignmentWebsite = async (req, res, next) => {
+    try {
+        const { farmerId, transporterId, warehouseId, commodityId, noOfBags, weight, quantity, rate, amount, date } = req.body;
+
+        const userId = req.userData.user._id;
+
+        const commoditiesData = {
+            commodityId: commodityId,
+            bags: [{
+                noOfBags: noOfBags,
+                weight: weight,
+                quantity: quantity
+            }],
+            totalQuantity: quantity,
+            amount: amount
+        };
+
+        await updateStockIn(warehouseId, commodityId, quantity);
+
+        const newConsignment = new Consignment({
+            farmerId,
+            transporterId,
+            warehouseId,
+            commodity: commoditiesData,
+            totalAmount: amount,
+            createdBy: userId,
+            createdAt: date,
+            updatedAt: date
+        });
+
+        await newConsignment.save();
+
+        res.status(201).json({
+            status: true,
+            message: 'Consignment created successfully',
+            data: newConsignment
+        });
+    } catch (error) {
+        res.status(400).json({
+            status: false,
+            message: 'Failed to create consignment',
+            error: error.message
+        });
+    }
+}
+
+const getConsignmentsForWebsite = async (req, res) => {
+    try {
+        const warehouseId = req.userData.user.warehouseId._id;
+
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const farmerId = req.query.farmerId;
+        const filterWarehouseId = req.query.warehouseId;
+        const commodityId = req.query.commodityId;
+        const createdBy = req.query.createdBy;
+    
+        const query = {};
+
+        if (req.query.dateRange) {
+            const dateMatches = req.query.dateRange.match(/(\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} GMT)/g);
+
+            if (dateMatches && dateMatches.length === 2) {
+                const [startDate, endDate] = dateMatches.map(date => new Date(date.trim()));
+
+                const startOfDate = new Date(startDate.setUTCHours(0, 0, 0, 0));
+                const endOfDate = new Date(endDate.setUTCHours(23, 59, 59, 999));
+                
+                query.createdAt = {
+                    $gte: startOfDate,
+                    $lt: new Date(endOfDate.getTime() + 1)
+                };
+            } else {
+                console.error("Invalid date range format.");
+            }
+        }
+        if (filterWarehouseId) {
+            query.warehouseId = filterWarehouseId;
+        }
+        if (farmerId) {
+            query.farmerId = farmerId;
+        }
+        if (commodityId) {
+            query['commodity.commodityId'] = commodityId;
+        }
+        if (createdBy) {
+            query.createdBy = createdBy;
+        }
+
+        console.log(query);
+
+        let consignments = await Consignment.find(query)
+            .populate('farmerId')
+            .populate('transporterId')
+            .populate('warehouseId')
+            .populate('commodity.commodityId')
+            .populate('createdBy')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalCount = await Consignment.countDocuments(query);
+        const totalPages = Math.ceil(totalCount / limit);
+
+        res.json({
+            status: true,
+            message: 'Consignments fetched successfully',
+            data: consignments,
+            pagination: {
+                currentPage: page,
+                totalPages: totalPages,
+                totalCount: totalCount,
+                limit: limit,
+            },
+        });
+    } catch (error) {
+        console.log('error===', error);
+        res.status(500).json({ status: false, message: 'Failed to fetch consignments', error: error.message });
+    }
+};
+
 const getAllConsignments = async (req, res, next) => {
     try {
         const warehouseId = req.userData.user.warehouseId._id;
@@ -65,7 +188,6 @@ const getAllConsignments = async (req, res, next) => {
         res.status(500).json({ status: false, message: 'Failed to fetch consignments', error: error.message });
     }
 };
-
 
 const getConsignmentById = async (req, res, next) => {
     try {
@@ -131,7 +253,7 @@ const updateConsignment = async (req, res, next) => {
             }
         } else {
             const transaction = await Transaction.findOne({ consignmentId: req.params.id, reverted: false });
-            
+
             if (transaction) {
                 const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId });
                 if (depotCash) {
@@ -186,4 +308,4 @@ const deleteConsignment = async (req, res, next) => {
 };
 
 
-module.exports = { createConsignment, getAllConsignments, getConsignmentById, updateConsignment, deleteConsignment };
+module.exports = { createConsignment, getAllConsignments, getConsignmentById, updateConsignment, deleteConsignment, createConsignmentWebsite, getConsignmentsForWebsite };

@@ -5,7 +5,8 @@ const {
     getPriceById,
     updatePriceById,
     deletePriceById,
-    getPriceByWarehouseCommodity
+    getPriceByWarehouseCommodity,
+    getPriceByWarehouseIdAndCommodityId
 } = require('../controllers/priceController');
 
 const router = express.Router();
@@ -16,5 +17,6 @@ router.get('/:id', getPriceById);
 router.get('/all-prices/:warehouseId', getPriceByWarehouseCommodity);
 router.put('/:id', updatePriceById);
 router.delete('/:id', deletePriceById);
+router.get('/:warehouseId/:commodityId', getPriceByWarehouseIdAndCommodityId);
 
 module.exports = router;
