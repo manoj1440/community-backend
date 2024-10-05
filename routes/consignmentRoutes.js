@@ -11,11 +11,11 @@ const {
 
 const router = express.Router();
 
+router.get('/consignments', getConsignmentsForWebsite)
+
 router.post('/', createConsignment);
 
 router.post('/create-consignment-website', createConsignmentWebsite)
-
-router.get('/get-all-consignments-website', getConsignmentsForWebsite)
 
 router.get('/', getAllConsignments);
 
