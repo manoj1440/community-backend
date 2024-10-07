@@ -95,6 +95,7 @@ const getConsignmentsForWebsite = async (req, res) => {
         const filterWarehouseId = req.query.warehouseId;
         const commodityId = req.query.commodityId;
         const createdBy = req.query.createdBy;
+        const transferred = req.query.transferred
     
         const query = {};
 
@@ -127,8 +128,9 @@ const getConsignmentsForWebsite = async (req, res) => {
         if (createdBy) {
             query.createdBy = createdBy;
         }
-
-        console.log(query);
+        if(transferred) {
+            query.transferred = transferred;
+        }
 
         let consignments = await Consignment.find(query)
             .populate('farmerId')

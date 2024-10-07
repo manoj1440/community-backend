@@ -85,13 +85,15 @@ exports.addDepotCash = async (req, res) => {
 
 exports.getAllDepotCashEntries = async (req, res) => {
     try {
+        const { page = 1, limit = 10 } = req.query;
+
         const warehouses = await Warehouse.find();
         const depotCashEntries = [];
 
         for (const warehouse of warehouses) {
             let depotCashEntry = await DepotCash.findOne({ warehouseId: warehouse._id })
-                .populate('transactions')
-                .populate('warehouseId');
+                .populate('warehouseId')
+                .select({ '-transactions': 1 });
 
             if (!depotCashEntry) {
                 const newDepotCashEntry = new DepotCash({
@@ -113,9 +115,43 @@ exports.getAllDepotCashEntries = async (req, res) => {
             }
         }
 
-        res.json(depotCashEntries);
+        const startIndex = (page - 1) * limit;
+        const paginatedEntries = depotCashEntries.slice(startIndex, startIndex + parseInt(limit));
+
+        res.json({
+            total: depotCashEntries.length,
+            currentPage: parseInt(page),
+            pageSize: parseInt(limit),
+            entries: paginatedEntries
+        });
     } catch (error) {
         console.error('Error fetching depot cash entries:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
+};
+
+exports.getTransactionsByWarehouseId = async (req, res, next) => {
+    try {
+        const { warehouseId } = req.params;
+        const { page = 1, limit = 10 } = req.query; 
+
+        const startIndex = (page - 1) * limit;
+
+        const transactions = await Transaction.find({ warehouseId })
+            .skip(startIndex) 
+            .limit(parseInt(limit)) 
+            .populate('entityId', '-password'); 
+
+        const totalTransactions = await Transaction.countDocuments({ warehouseId });
+
+        res.json({
+            total: totalTransactions,
+            currentPage: parseInt(page),
+            pageSize: parseInt(limit),
+            entries: transactions,
+        });
+    } catch (error) {
+        console.error('Error fetching transactions:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
