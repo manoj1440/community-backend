@@ -57,4 +57,45 @@ const deleteTransporterById = async (req, res, next) => {
     }
 };
 
-module.exports = { createTransporter, getAllTransporters, getTransporterById, updateTransporterById, deleteTransporterById };
+const getTransportersForWebsite = async (req, res, next) => {
+  try {
+    const page = parseInt(req.query.page) || 1;
+    const pageSize = parseInt(req.query.pageSize) || 10;
+    
+    const skip = (page - 1) * pageSize;
+    
+    const paginate = req.query.page && req.query.pageSize;
+
+    let transportersQuery = Transporter.find().select('-__v');
+
+    if (paginate) {
+      transportersQuery = transportersQuery.skip(skip).limit(pageSize);
+    }
+
+    const transporters = await transportersQuery;
+    const totalTransporters = await Transporter.countDocuments();
+
+    res.json({
+      status: true,
+      message: 'Transporters fetched successfully for website',
+      data: transporters,
+      pagination: paginate
+        ? {
+            page,
+            pageSize,
+            total: totalTransporters,
+            totalPages: Math.ceil(totalTransporters / pageSize),
+          }
+        : null, 
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: false,
+      message: 'Failed to fetch transporters for website',
+      error: error.message,
+    });
+  }
+};
+
+
+module.exports = { createTransporter, getAllTransporters, getTransporterById, updateTransporterById, deleteTransporterById, getTransportersForWebsite };

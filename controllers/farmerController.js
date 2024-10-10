@@ -57,4 +57,36 @@ const deleteFarmerById = async (req, res, next) => {
     }
 };
 
-module.exports = { createFarmer, getAllFarmers, getFarmerById, updateFarmerById, deleteFarmerById };
+const getFarmersForWebsite = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page); 
+        const pageSize = parseInt(req.query.pageSize); 
+
+        let farmersQuery = Farmer.find().select('-__v'); 
+
+        if (page && pageSize) {
+            const skip = (page - 1) * pageSize;
+            farmersQuery = farmersQuery.skip(skip).limit(pageSize); 
+        }
+
+        const farmers = await farmersQuery;
+
+        const totalFarmers = await Farmer.countDocuments();
+
+        res.json({
+            status: true,
+            message: 'Farmers fetched successfully for website',
+            data: {
+                farmers,
+                page: page || null, 
+                pageSize: pageSize || null,
+                total: totalFarmers,
+                totalPages: pageSize ? Math.ceil(totalFarmers / pageSize) : null, 
+            }
+        });
+    } catch (error) {
+        res.status(500).json({ status: false, message: 'Failed to fetch farmers for website', error: error.message });
+    }
+}
+
+module.exports = { createFarmer, getAllFarmers, getFarmerById, updateFarmerById, deleteFarmerById, getFarmersForWebsite };
