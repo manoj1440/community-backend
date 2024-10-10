@@ -21,7 +21,8 @@ const commoditySchema = new Schema({
     commodityId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Commodity',
-        required: true
+        required: true,
+        index: true
     },
     bags: [bagSchema],
     totalQuantity: {
@@ -57,7 +58,8 @@ const consignmentSchema = new Schema({
     warehouseId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Warehouse',
-        required: true
+        required: true,
+        index: true
     },
     transferred: {
         type: String,
@@ -73,7 +75,8 @@ const consignmentSchema = new Schema({
     },
     createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',  
+        ref: 'User',
+        index: true
     }
 }, {
     timestamps: true

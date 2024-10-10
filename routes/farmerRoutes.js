@@ -4,7 +4,8 @@ const {
     getAllFarmers,
     getFarmerById,
     updateFarmerById,
-    deleteFarmerById
+    deleteFarmerById,
+    getFarmersForWebsite
 } = require('../controllers/farmerController');
 
 const router = express.Router();
@@ -14,5 +15,6 @@ router.get('/', getAllFarmers);
 router.get('/:id', getFarmerById);
 router.put('/:id', updateFarmerById);
 router.delete('/:id', deleteFarmerById);
+router.get('/website/farmers', getFarmersForWebsite)
 
 module.exports = router;
