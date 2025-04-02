@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const Schema = mongoose.Schema;
+const getFinancialYear = require('../utils/financialYear');
 
 const bagSchema = new Schema({
     noOfBags: {
@@ -59,9 +60,13 @@ const StockOutSchema = new Schema({
         type: Number,
         default: 0
     },
-        createdBy: {
+    createdBy: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User',  
+        ref: 'User',
+    },
+    financialYear: {
+        type: String,
+        default: () => getFinancialYear()
     }
 
 }, {

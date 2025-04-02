@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const Schema = mongoose.Schema;
+const getFinancialYear = require('../utils/financialYear');
 
 const bagSchema = new Schema({
     noOfBags: {
@@ -77,6 +78,10 @@ const consignmentSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         index: true
+    },
+    financialYear: {
+        type: String,
+        default: () => getFinancialYear()
     }
 }, {
     timestamps: true

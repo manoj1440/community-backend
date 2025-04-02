@@ -1,13 +1,16 @@
 const StockOut = require('../models/stockOut');
 const StockIn = require('../models/stockIn');
 const { DepotCash, Transaction } = require('../models/depotCash');
+const getFinancialYear = require('../utils/financialYear');
 
 const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
     try {
-        let stockIn = await StockIn.findOne({ warehouseId, commodityId });
+        const financialYear = getFinancialYear();
+
+        let stockIn = await StockIn.findOne({ warehouseId, commodityId, financialYear });
 
         if (!stockIn) {
-            stockIn = new StockIn({ warehouseId, commodityId, totalQuantity });
+            stockIn = new StockIn({ warehouseId, commodityId, totalQuantity, financialYear });
         } else {
             stockIn.totalQuantity += totalQuantity;
 
@@ -25,10 +28,11 @@ const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
 // Create a new StockOut
 const createStockOut = async (req, res) => {
     try {
+        const financialYear = getFinancialYear();
         const userId = req.userData.user._id;
         await updateStockIn(req.body.warehouseId, req.body.commodityId, -req.body.totalQuantity);
 
-        const newStockOut = await StockOut.create({ ...req.body, createdBy: userId });
+        const newStockOut = await StockOut.create({ ...req.body, createdBy: userId, financialYear: financialYear });
 
         res.status(201).json({
             status: true,
@@ -47,10 +51,16 @@ const createStockOut = async (req, res) => {
 // Get all StockOuts
 const getAllStockOuts = async (req, res) => {
     try {
+        const requestedFinancialYear = req.query.financialYear;
+        const financialYear = requestedFinancialYear || getFinancialYear();
+
         const warehouseId = req.userData.user.warehouseId._id;
         const role = req.userData.user.role;
+
+        let query = { financialYear };
+
         if (role === 'ADMIN') {
-            const stockOuts = await StockOut.find().populate('warehouseId customerId commodityId').sort({ createdAt: -1 });
+            const stockOuts = await StockOut.find(query).populate('warehouseId customerId commodityId').sort({ createdAt: -1 });
             res.json({
                 status: true,
                 message: 'StockOuts fetched successfully',
@@ -127,7 +137,7 @@ const updateStockOut = async (req, res) => {
         if (received) {
             if (received.toLowerCase() === 'yes') {
                 const warehouseId = updatedStockOut.warehouseId;
-                const depotCash = await DepotCash.findOne({ warehouseId });
+                const depotCash = await DepotCash.findOne({ warehouseId, financialYear: updatedStockOut.financialYear });
 
                 if (depotCash) {
                     depotCash.closingAmount += updatedStockOut.receivedAmount;
@@ -140,7 +150,8 @@ const updateStockOut = async (req, res) => {
                         date: new Date(),
                         amount: updatedStockOut.receivedAmount,
                         type: 'Credit',
-                        reverted: false
+                        reverted: false,
+                        financialYear: updatedStockOut.financialYear,
                     });
 
                     await newTransaction.save();
@@ -154,7 +165,7 @@ const updateStockOut = async (req, res) => {
                 const transaction = await Transaction.findOne({ consignmentId: req.params.id, reverted: false });
 
                 if (transaction) {
-                    const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId });
+                    const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId, financialYear: updatedStockOut.financialYear });
                     if (depotCash) {
                         depotCash.closingAmount -= transaction.amount;
                         transaction.reverted = true;
@@ -168,7 +179,8 @@ const updateStockOut = async (req, res) => {
                             amount: transaction.amount,
                             type: transaction.type === 'Credit' ? 'Debit' : 'Credit',
                             reverted: true,
-                            originalTransactionId: transaction._id
+                            originalTransactionId: transaction._id,
+                            financialYear: updatedStockOut.financialYear,
                         });
                         depotCash.transactions.push(reversedTransaction._id);
 

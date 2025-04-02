@@ -10,6 +10,9 @@ const historicalPriceSchema = new Schema({
     date: {
         type: Date,
         default: Date.now
+    },
+    financialYear: {
+        type: String
     }
 });
 

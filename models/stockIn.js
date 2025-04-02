@@ -16,6 +16,9 @@ const stockInSchema = new Schema({
     totalQuantity: {
         type: Number,
         required: true
+    },
+    financialYear: {
+        type: String,
     }
 }, {
     timestamps: true

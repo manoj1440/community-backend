@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const Consignment = require('../models/consignment');
 const StockOut = require('../models/stockOut');
 const consignment = require('../models/consignment');
+const getFinancialYear = require('../utils/financialYear');
 
 exports.addDepotCash = async (req, res) => {
     const { warehouseId, amount } = req.body;
@@ -11,9 +12,10 @@ exports.addDepotCash = async (req, res) => {
     const amountAdded = parseInt(amount);
     const currentDate = new Date();
     const currentDateString = currentDate.toISOString().split('T')[0];
+    const financialYear = getFinancialYear(currentDate);
 
     try {
-        let existingDepotCashEntry = await DepotCash.findOne({ warehouseId }).populate('transactions');
+        let existingDepotCashEntry = await DepotCash.findOne({ warehouseId, financialYear }).populate('transactions');
         if (existingDepotCashEntry) {
 
             const todayAdminTransactions = existingDepotCashEntry.transactions.filter(transaction => {
@@ -42,7 +44,8 @@ exports.addDepotCash = async (req, res) => {
                 warehouseId: warehouseId,
                 date: new Date(),
                 amount: amountAdded,
-                type: 'Credit'
+                type: 'Credit',
+                financialYear
             });
 
             await newTransaction.save();
@@ -60,7 +63,8 @@ exports.addDepotCash = async (req, res) => {
                 warehouseId: warehouseId,
                 date: new Date(),
                 amount: amountAdded,
-                type: 'Credit'
+                type: 'Credit',
+                financialYear
             });
 
             await newTransaction.save();
@@ -70,7 +74,8 @@ exports.addDepotCash = async (req, res) => {
                 openingAmount: amountAdded,
                 closingAmount: amountAdded,
                 date: new Date(),
-                transactions: [newTransaction._id]
+                transactions: [newTransaction._id],
+                financialYear
             });
 
             await newDepotCashEntry.save();
@@ -87,11 +92,17 @@ exports.getAllDepotCashEntries = async (req, res) => {
     try {
         const { page = 1, limit = 10 } = req.query;
 
+        const financialYear = req.query.financialYear || getFinancialYear(new Date());
+        console.log("🚀 ~ exports.getAllDepotCashEntries= ~ financialYear:", financialYear)
+
         const warehouses = await Warehouse.find();
         const depotCashEntries = [];
 
         for (const warehouse of warehouses) {
-            let depotCashEntry = await DepotCash.findOne({ warehouseId: warehouse._id })
+            let depotCashEntry = await DepotCash.findOne({
+                warehouseId: warehouse._id,
+                financialYear
+            })
                 .populate('warehouseId')
                 .select({ '-transactions': 1 });
 
@@ -100,12 +111,16 @@ exports.getAllDepotCashEntries = async (req, res) => {
                     warehouseId: warehouse._id,
                     openingAmount: 0,
                     closingAmount: 0,
-                    date: new Date()
+                    date: new Date(),
+                    financialYear  // Add financialYear field
                 });
                 await newDepotCashEntry.save();
                 depotCashEntries.push(newDepotCashEntry);
             } else {
-                const transactions = await Transaction.find({ _id: { $in: depotCashEntry.transactions } })
+                const transactions = await Transaction.find({
+                    _id: { $in: depotCashEntry.transactions },
+                    financialYear  // Ensure transactions also belong to the same financial year
+                })
                     .populate('entityId', '-password');
 
                 depotCashEntry = depotCashEntry.toObject();
@@ -115,6 +130,7 @@ exports.getAllDepotCashEntries = async (req, res) => {
             }
         }
 
+        // Pagination logic
         const startIndex = (page - 1) * limit;
         const paginatedEntries = depotCashEntries.slice(startIndex, startIndex + parseInt(limit));
 
@@ -133,16 +149,24 @@ exports.getAllDepotCashEntries = async (req, res) => {
 exports.getTransactionsByWarehouseId = async (req, res, next) => {
     try {
         const { warehouseId } = req.params;
-        const { page = 1, limit = 10 } = req.query; 
+        const { page = 1, limit = 10 } = req.query;
+
+        const financialYear = getFinancialYear(new Date());
 
         const startIndex = (page - 1) * limit;
 
-        const transactions = await Transaction.find({ warehouseId })
-            .skip(startIndex) 
-            .limit(parseInt(limit)) 
-            .populate('entityId', '-password'); 
+        const transactions = await Transaction.find({
+            warehouseId,
+            financialYear
+        })
+            .skip(startIndex)
+            .limit(parseInt(limit))
+            .populate('entityId', '-password');
 
-        const totalTransactions = await Transaction.countDocuments({ warehouseId });
+        const totalTransactions = await Transaction.countDocuments({
+            warehouseId,
+            financialYear
+        });
 
         res.json({
             total: totalTransactions,
@@ -161,12 +185,13 @@ exports.revertTransaction = async (req, res) => {
     const { consignmentId } = req.body;
     try {
         const transaction = await Transaction.findById(transactionId);
+        console.log("🚀 ~ exports.revertTransaction= ~ transaction:", transaction)
 
         if (!transaction) {
             return res.status(404).json({ error: 'Transaction not found' });
         }
 
-        const depotCashEntry = await DepotCash.findOne({ warehouseId: transaction.warehouseId });
+        const depotCashEntry = await DepotCash.findOne({ warehouseId: transaction.warehouseId, financialYear: transaction.financialYear }).populate('transactions');
 
         if (!depotCashEntry) {
             return res.status(404).json({ error: 'Depot cash entry not found' });
@@ -190,7 +215,8 @@ exports.revertTransaction = async (req, res) => {
             amount: transaction.amount,
             type: transaction.type === 'Credit' ? 'Debit' : 'Credit',
             reverted: true,
-            originalTransactionId: transaction._id
+            originalTransactionId: transaction._id,
+            financialYear: transaction.financialYear
         });
 
         await reversedTransaction.save();
@@ -251,7 +277,8 @@ exports.updateDepotCashById = async (req, res) => {
             return res.status(404).json({ error: 'Transaction not found' });
         }
 
-        const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId }).populate('transactions');
+        const financialYear = getFinancialYear(new Date());
+        const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId, financialYear: financialYear }).populate('transactions');
         if (!depotCash) {
             return res.status(404).json({ error: 'Depot Cash entry not found' });
         }
@@ -261,7 +288,6 @@ exports.updateDepotCashById = async (req, res) => {
             const transactionDate = t.date;
             return t.entityType === 'User' && t.type === 'Credit' && transactionDate.toISOString().split('T')[0] === currentDate.toISOString().split('T')[0];
         });
-        console.log("🚀 ~ todayTransactions ~ todayTransactions:", todayTransactions)
 
         const amountDifference = amount - transaction.amount;
         console.log("🚀 ~ exports.updateDepotCashById= ~ amountDifference:", amountDifference)
@@ -287,17 +313,23 @@ exports.updateDepotCashById = async (req, res) => {
 exports.deleteDepotCashById = async (req, res) => {
     const { id } = req.params;
     try {
-        const deletedDepotCashEntry = await DepotCash.findByIdAndDelete(id);
-        if (!deletedDepotCashEntry) {
+        const depotCash = await DepotCash.findById(id);
+        if (!depotCash) {
             return res.status(404).json({ error: 'Depot cash entry not found' });
         }
+
+        const financialYear = getFinancialYear(new Date());
+        if (depotCash.financialYear !== financialYear) {
+            return res.status(400).json({ error: 'Depot cash entry does not belong to the current financial year' });
+        }
+
+        await DepotCash.findByIdAndDelete(id);
         res.json({ message: 'Depot cash entry deleted successfully' });
     } catch (error) {
         console.error('Error deleting depot cash entry by ID:', error);
         res.status(500).json({ error: 'Internal server error' });
     }
 };
-
 
 
 
