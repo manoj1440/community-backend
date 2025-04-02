@@ -1,13 +1,15 @@
 const Consignment = require('../models/consignment');
 const { DepotCash, Transaction } = require('../models/depotCash');
 const StockIn = require('../models/stockIn');
+const getFinancialYear = require('../utils/financialYear');
 
-const updateStockIn = async (warehouseId, commodityId, totalQuantity) => {
+const updateStockIn = async (warehouseId, commodityId, totalQuantity, date = new Date()) => {
     try {
-        let stockIn = await StockIn.findOne({ warehouseId, commodityId });
+        const financialYear = getFinancialYear(date);
+        let stockIn = await StockIn.findOne({ warehouseId, commodityId, financialYear });
 
         if (!stockIn) {
-            stockIn = new StockIn({ warehouseId, commodityId, totalQuantity });
+            stockIn = new StockIn({ warehouseId, commodityId, totalQuantity, financialYear });
         } else {
             stockIn.totalQuantity += totalQuantity;
 
@@ -27,9 +29,9 @@ const createConsignment = async (req, res, next) => {
         const userId = req.userData.user._id;
 
         for (const item of commodity) {
-            await updateStockIn(warehouseId, item.commodityId, item.totalQuantity);
+            await updateStockIn(warehouseId, item.commodityId, item.totalQuantity, new Date());
         }
-        const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodity, totalAmount, createdBy: userId });
+        const newConsignment = new Consignment({ farmerId, transporterId, warehouseId, commodity, totalAmount, createdBy: userId, financialYear: getFinancialYear(new Date()) });
         await newConsignment.save();
         res.status(201).json({ status: true, message: 'Consignment created successfully', data: newConsignment });
     } catch (error) {
@@ -54,7 +56,7 @@ const createConsignmentWebsite = async (req, res, next) => {
             amount: amount
         };
 
-        await updateStockIn(warehouseId, commodityId, quantity);
+        await updateStockIn(warehouseId, commodityId, quantity, new Date());
 
         const newConsignment = new Consignment({
             farmerId,
@@ -64,7 +66,8 @@ const createConsignmentWebsite = async (req, res, next) => {
             totalAmount: amount,
             createdBy: userId,
             createdAt: date,
-            updatedAt: date
+            updatedAt: date,
+            financialYear: getFinancialYear(date)
         });
 
         await newConsignment.save();
@@ -95,42 +98,25 @@ const getConsignmentsForWebsite = async (req, res) => {
         const filterWarehouseId = req.query.warehouseId;
         const commodityId = req.query.commodityId;
         const createdBy = req.query.createdBy;
-        const transferred = req.query.transferred
-    
-        const query = {};
+        const transferred = req.query.transferred;
+        const startDate = req.query.startDate; 
+        const endDate = req.query.endDate;     
+        
 
-        if (req.query.dateRange) {
-            const dateMatches = req.query.dateRange.match(/(\w{3}, \d{2} \w{3} \d{4} \d{2}:\d{2}:\d{2} GMT)/g);
+        const query = { };
 
-            if (dateMatches && dateMatches.length === 2) {
-                const [startDate, endDate] = dateMatches.map(date => new Date(date.trim()));
+        if (startDate && endDate) {
+            query.createdAt = {
+                $gte: new Date(startDate + "T00:00:00.000Z"),
+                $lte: new Date(endDate + "T23:59:59.999Z"),
+            };
+        }
 
-                const startOfDate = new Date(startDate.setUTCHours(0, 0, 0, 0));
-                const endOfDate = new Date(endDate.setUTCHours(23, 59, 59, 999));
-                
-                query.createdAt = {
-                    $gte: startOfDate,
-                    $lt: new Date(endOfDate.getTime() + 1)
-                };
-            } else {
-                console.error("Invalid date range format.");
-            }
-        }
-        if (filterWarehouseId) {
-            query.warehouseId = filterWarehouseId;
-        }
-        if (farmerId) {
-            query.farmerId = farmerId;
-        }
-        if (commodityId) {
-            query['commodity.commodityId'] = commodityId;
-        }
-        if (createdBy) {
-            query.createdBy = createdBy;
-        }
-        if(transferred) {
-            query.transferred = transferred;
-        }
+        if (filterWarehouseId) query.warehouseId = filterWarehouseId;
+        if (farmerId) query.farmerId = farmerId;
+        if (commodityId) query['commodity.commodityId'] = commodityId;
+        if (createdBy) query.createdBy = createdBy;
+        if (transferred) query.transferred = transferred;
 
         let consignments = await Consignment.find(query)
             .populate('farmerId')
@@ -161,6 +147,7 @@ const getConsignmentsForWebsite = async (req, res) => {
         res.status(500).json({ status: false, message: 'Failed to fetch consignments', error: error.message });
     }
 };
+
 
 const getAllConsignments = async (req, res, next) => {
     try {
@@ -218,7 +205,7 @@ const updateConsignment = async (req, res, next) => {
         if (transferred === 'yes') {
             const warehouseId = consignment.warehouseId;
 
-            const depotCash = await DepotCash.findOne({ warehouseId });
+            const depotCash = await DepotCash.findOne({ warehouseId, financialYear: getFinancialYear(new Date()) });
 
             if (!depotCash) {
                 return res.status(404).json({ status: false, message: 'Depot cash entry not found' });
@@ -240,7 +227,8 @@ const updateConsignment = async (req, res, next) => {
                     consignmentId: consignment._id,
                     date: new Date(),
                     amount: consignment.totalAmount,
-                    type: 'Debit'
+                    type: 'Debit',
+                    financialYear: getFinancialYear(new Date())
                 });
 
                 await newTransaction.save();
@@ -257,7 +245,7 @@ const updateConsignment = async (req, res, next) => {
             const transaction = await Transaction.findOne({ consignmentId: req.params.id, reverted: false });
 
             if (transaction) {
-                const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId });
+                const depotCash = await DepotCash.findOne({ warehouseId: transaction.warehouseId, financialYear: getFinancialYear(new Date()) });
                 if (depotCash) {
                     depotCash.closingAmount += transaction.amount;
                     transaction.reverted = true;
@@ -271,7 +259,8 @@ const updateConsignment = async (req, res, next) => {
                         amount: transaction.amount,
                         type: transaction.type === 'Credit' ? 'Debit' : 'Credit',
                         reverted: true,
-                        originalTransactionId: transaction._id
+                        originalTransactionId: transaction._id,
+                        financialYear: getFinancialYear(new Date())
                     });
                     depotCash.transactions.push(reversedTransaction._id);
 
@@ -300,7 +289,7 @@ const deleteConsignment = async (req, res, next) => {
         }
 
         for (const item of consignment.commodity) {
-            await updateStockIn(consignment.warehouseId, item.commodityId, -item.totalQuantity);
+            await updateStockIn(consignment.warehouseId, item.commodityId, -item.totalQuantity, consignment.createdAt);
         }
 
         res.json({ status: true, message: 'Consignment deleted successfully' });

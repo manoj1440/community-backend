@@ -12,7 +12,7 @@ const transactionSchema = new mongoose.Schema({
     consignmentId: {
         type: mongoose.Schema.Types.ObjectId,
     },
-        warehouseId: {
+    warehouseId: {
         type: mongoose.Schema.Types.ObjectId,
     },
     date: {
@@ -35,6 +35,9 @@ const transactionSchema = new mongoose.Schema({
     originalTransactionId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Transaction'
+    },
+    financialYear: {
+        type: String,  // Add financial year field here
     }
 });
 
@@ -60,6 +63,9 @@ const depotCashSchema = new mongoose.Schema({
     date: {
         type: Date,
         default: Date.now
+    },
+    financialYear: {  // Add financial year field here
+        type: String,
     }
 });
 
