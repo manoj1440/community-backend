@@ -9,6 +9,7 @@ const Commodity = require('../models/commodity');
 const moment = require('moment');
 const Warehouse = require('../models/warehouse');
 const mongoose = require('mongoose');
+const getFinancialYear = require('../utils/financialYear');
 const { ObjectId } = mongoose.Types;
 
 const getStockInCommodityStats = async (req, res) => {
@@ -129,9 +130,12 @@ const getTotalBags = async (filters = {}) => {
   }
 };
 
-const getTotalDepotCash = async (warehouseFilters = {}) => {
+const getTotalDepotCash = async (warehouseFilters = {}, depotCashFilters = {}) => {
   try {
-    const depotCashRecords = await DepotCash.find(warehouseFilters);
+    const depotCashRecords = await DepotCash.find({
+      ...warehouseFilters,
+      financialYear: depotCashFilters.financialYear
+    });
 
     const totalDepotCash = depotCashRecords.reduce((total, item) => total + item.closingAmount, 0);
 
@@ -140,6 +144,7 @@ const getTotalDepotCash = async (warehouseFilters = {}) => {
     throw new Error('Failed to get total depot cash: ' + error.message);
   }
 };
+
 
 const getTotalAmount = async (filters = {}) => {
   try {
@@ -203,7 +208,7 @@ const getTotalStats = async (filters = {}, commodityObjectIds = []) => {
         $project: {
           commodity: {
             $cond: {
-              if: { $gt: [{ $size: { $ifNull: [commodityObjectIds, []] } }, 0] }, 
+              if: { $gt: [{ $size: { $ifNull: [commodityObjectIds, []] } }, 0] },
               then: {
                 $filter: {
                   input: "$commodity",
@@ -211,7 +216,7 @@ const getTotalStats = async (filters = {}, commodityObjectIds = []) => {
                   cond: { $in: ["$$comm.commodityId", commodityObjectIds] }
                 }
               },
-              else: "$commodity" 
+              else: "$commodity"
             }
           }
         }
@@ -258,7 +263,7 @@ const getTotalStats = async (filters = {}, commodityObjectIds = []) => {
 
 const getDashboardStatsValue = async (req, res, next) => {
   try {
-    let { warehouses, commodities } = req.query;
+    let { warehouses, commodities, startDate, endDate } = req.query;
 
     warehouses = warehouses ? warehouses.split(',') : [];
     commodities = commodities ? commodities.split(',') : [];
@@ -278,31 +283,19 @@ const getDashboardStatsValue = async (req, res, next) => {
       filters['commodity.commodityId'] = { $in: commodityObjectIds };
     }
 
-    if (req.query.dateRange) {
-      const dateRange = req.query.dateRange.split(',');
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
-      if (dateRange.length === 2) {
-        const [startDateStr, endDateStr] = dateRange.map(date => date.trim());
-
-        const startDate = new Date(startDateStr);
-        const endDate = new Date(endDateStr);
-
-        if (!isNaN(startDate) && !isNaN(endDate)) {
-          const startOfDate = new Date(startDate.setUTCHours(0, 0, 0, 0));
-          const endOfDate = new Date(endDate.setUTCHours(23, 59, 59, 999));
-
-          filters.createdAt = {
-            $gte: startOfDate,
-            $lt: new Date(endOfDate.getTime() + 1)
-          };
-        } else {
-          console.error("Invalid date values provided.");
-        }
+      if (!isNaN(start) && !isNaN(end)) {
+        filters.createdAt = {
+          $gte: new Date(start.setUTCHours(0, 0, 0, 0)),
+          $lt: new Date(end.setUTCHours(23, 59, 59, 999))
+        };
       } else {
-        console.error("Date range should contain two dates separated by a comma.");
+        console.error("Invalid date values provided.");
       }
     }
-
 
     const stockInFilters = {};
     if (warehouseObjectIds.length > 0) {
@@ -312,11 +305,29 @@ const getDashboardStatsValue = async (req, res, next) => {
       stockInFilters.commodityId = { $in: commodityObjectIds };
     }
 
+    let depotCashFilters = {};
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
+
+      if (!isNaN(start) && !isNaN(end)) {
+        stockInFilters.createdAt = {
+          $gte: new Date(start.setUTCHours(0, 0, 0, 0)),
+          $lt: new Date(end.setUTCHours(23, 59, 59, 999)),
+        };
+
+        const financialYear = getFinancialYear(start);
+        stockInFilters.financialYear = financialYear;
+        depotCashFilters.financialYear = financialYear;
+      }
+    }
+
+
     const { consignmentCount, totalAmount, totalBags } = await getTotalStats(filters, commodityObjectIds);
 
     const [totalStockIn, totalDepotCash] = await Promise.all([
       getTotalStockIn(stockInFilters),
-      getTotalDepotCash(warehouseFilters),
+      getTotalDepotCash(warehouseFilters, depotCashFilters),
 
     ]);
 
@@ -338,7 +349,7 @@ const getDashboardStatsValue = async (req, res, next) => {
 
 const getDashboardGraphs = async (req, res, next) => {
   try {
-    let { warehouses, commodities, dateRange } = req.query;
+    let { warehouses, commodities, startDate, endDate } = req.query;
 
     warehouses = warehouses ? warehouses.split(',') : [];
     commodities = commodities ? commodities.split(',') : [];
@@ -356,35 +367,25 @@ const getDashboardGraphs = async (req, res, next) => {
       filters['commodity.commodityId'] = { $in: commodityObjectIds };
     }
 
-    if (req.query.dateRange) {
-      const dateRange = req.query.dateRange.split(',');
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
-      if (dateRange.length === 2) {
-        const [startDateStr, endDateStr] = dateRange.map(date => date.trim());
-
-        const startDate = new Date(startDateStr);
-        const endDate = new Date(endDateStr);
-
-        if (!isNaN(startDate) && !isNaN(endDate)) {
-          const startOfDate = new Date(startDate.setUTCHours(0, 0, 0, 0));
-          const endOfDate = new Date(endDate.setUTCHours(23, 59, 59, 999));
-
-          filters.createdAt = {
-            $gte: startOfDate,
-            $lt: new Date(endOfDate.getTime() + 1)
-          };
-        } else {
-          console.error("Invalid date values provided.");
-        }
+      if (!isNaN(start) && !isNaN(end)) {
+        filters.createdAt = {
+          $gte: new Date(start.setUTCHours(0, 0, 0, 0)),
+          $lt: new Date(end.setUTCHours(23, 59, 59, 999))
+        };
       } else {
-        console.error("Date range should contain two dates separated by a comma.");
+        console.error("Invalid date values provided.");
       }
     }
+
 
     if (
       warehouseObjectIds.length === 0 &&
       commodityObjectIds.length === 0 &&
-      !req.query.dateRange
+      (!startDate || !endDate)
     ) {
       const today = new Date();
       const tenDaysAgo = new Date(today);
@@ -496,7 +497,7 @@ const getDashboardGraphs = async (req, res, next) => {
 
 const getDashboardGraphSecondSet = async (req, res, next) => {
   try {
-    let { warehouses, commodities, dateRange } = req.query;
+    let { warehouses, commodities, startDate, endDate } = req.query;
 
     warehouses = warehouses ? warehouses.split(',') : [];
     commodities = commodities ? commodities.split(',') : [];
@@ -516,35 +517,24 @@ const getDashboardGraphSecondSet = async (req, res, next) => {
       filters['commodity.commodityId'] = { $in: commodityObjectIds };
     }
 
-    if (req.query.dateRange) {
-      const dateRange = req.query.dateRange.split(',');
+    if (startDate && endDate) {
+      const start = new Date(startDate);
+      const end = new Date(endDate);
 
-      if (dateRange.length === 2) {
-        const [startDateStr, endDateStr] = dateRange.map(date => date.trim());
-
-        const startDate = new Date(startDateStr);
-        const endDate = new Date(endDateStr);
-
-        if (!isNaN(startDate) && !isNaN(endDate)) {
-          const startOfDate = new Date(startDate.setUTCHours(0, 0, 0, 0));
-          const endOfDate = new Date(endDate.setUTCHours(23, 59, 59, 999));
-
-          filters.createdAt = {
-            $gte: startOfDate,
-            $lt: new Date(endOfDate.getTime() + 1)
-          };
-        } else {
-          console.error("Invalid date values provided.");
-        }
+      if (!isNaN(start) && !isNaN(end)) {
+        filters.createdAt = {
+          $gte: new Date(start.setUTCHours(0, 0, 0, 0)),
+          $lt: new Date(end.setUTCHours(23, 59, 59, 999))
+        };
       } else {
-        console.error("Date range should contain two dates separated by a comma.");
+        console.error("Invalid date values provided.");
       }
     }
 
     if (
       warehouseObjectIds.length === 0 &&
       commodityObjectIds.length === 0 &&
-      !req.query.dateRange
+      (!startDate || !endDate)
     ) {
       const today = new Date();
       const tenDaysAgo = new Date(today);
